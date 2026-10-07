@@ -301,9 +301,11 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Shared feature module with parity and leakage tests | Done |
 | Baseline models and temporal evaluation | Done |
 | MLflow experiment tracking | Done |
-| Single-command pipeline entry point | Done || EDA notebook | Done |
-| Model artefacts and model card | Done || Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 58 tests |
+| Single-command pipeline entry point | Done |
+| EDA notebook | Done |
+| Model artefacts and model card | Done |
+| Architecture diagrams and `STACK.md` | Done |
+| Test suite | Done — 60 tests |
 
 ## Planned enhancements — V2 (Final)
 

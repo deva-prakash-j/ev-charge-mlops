@@ -1,8 +1,8 @@
 # Model card - hist_gradient_boosting (sample)
 
 - Target: kWhDelivered (kWh delivered in a charging session)
-- Trained: 2026-10-07T11:14:45+00:00
-- Git commit: ef0db3da701a
+- Trained: 2026-10-07T13:08:49+00:00
+- Git commit: 83beb1b53eb8
 - Features: 16
 - Validation MAE: 6.3419
 - Post-shift MAE: 7.2047
