@@ -1,0 +1,108 @@
+# Data contract for normalised charging sessions.
+#
+# severity:
+#   block      -> schema/shape violation; the pipeline stops
+#   quarantine -> individual rows are implausible; they are removed, written to
+#                 data/quarantine/ with a reason, and the run continues
+#
+# Bounds are grounded in observed ACN-Data behaviour, not guesses. The real feed
+# contains 245-hour sessions and mixed-type siteID values; both are caught here.
+
+required_columns:
+  - sessionID
+  - siteID
+  - stationID
+  - connectionTime
+  - disconnectTime
+  - kWhDelivered
+  - timezone
+  - connectedHours
+  - connectionTimeLocal
+
+expectations:
+  - type: expect_column_values_to_not_be_null
+    kwargs: {column: sessionID}
+    severity: block
+
+  - type: expect_column_values_to_be_unique
+    kwargs: {column: sessionID}
+    severity: block
+
+  - type: expect_column_values_to_not_be_null
+    kwargs: {column: connectionTime}
+    severity: block
+
+  - type: expect_column_values_to_not_be_null
+    kwargs: {column: kWhDelivered}
+    severity: block
+
+  # Catches the mixed-type defect: the feed emits both int 2 and str "0002".
+  - type: expect_column_values_to_be_in_set
+    kwargs:
+      column: siteID
+      value_set: ["0001", "0002", "0019"]
+    severity: block
+
+  - type: expect_column_values_to_be_of_type
+    kwargs: {column: siteID, type_: str}
+    severity: block
+
+  # clusterID is mixed int/str in the feed too.
+  - type: expect_column_values_to_be_of_type
+    kwargs: {column: clusterID, type_: str}
+    severity: block
+
+  - type: expect_column_values_to_be_in_set
+    kwargs:
+      column: timezone
+      value_set: ["America/Los_Angeles"]
+    severity: block
+
+  # Tolerant thresholds: a few extreme rows are expected and are quarantined
+  # below rather than failing the batch outright.
+  - type: expect_column_values_to_be_between
+    kwargs: {column: kWhDelivered, min_value: 0.0, max_value: 200.0, mostly: 0.999}
+    severity: block
+
+  - type: expect_column_values_to_be_between
+    kwargs: {column: connectedHours, min_value: 0.0, max_value: 168.0, mostly: 0.99}
+    severity: block
+
+  - type: expect_column_values_to_be_between
+    kwargs:
+      column: minutesAvailable
+      min_value: 0
+      max_value: 10080
+      mostly: 0.99
+    severity: block
+
+  - type: expect_column_values_to_be_between
+    kwargs: {column: userInputs_count, min_value: 0, max_value: 100}
+    severity: block
+
+# Row-level plausibility. Structured rather than free-text expressions so no
+# config value is ever evaluated as code.
+quarantine_rules:
+  - column: connectedHours
+    op: gt
+    value: 168
+    reason: session connected for more than one week
+  - column: connectedHours
+    op: le
+    value: 0
+    reason: non-positive connected duration
+  - column: kWhDelivered
+    op: lt
+    value: 0
+    reason: negative energy delivered
+  - column: kWhDelivered
+    op: gt
+    value: 200
+    reason: energy delivered exceeds plausible battery capacity
+  - column: connectionTime
+    op: isnull
+    reason: unparseable connection timestamp
+  - column: minutesAvailable
+    op: gt
+    value: 10080
+    reason: declared availability exceeds one week

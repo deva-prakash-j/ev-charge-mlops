@@ -1,0 +1,16 @@
+# Week 1-2 stack. Serving (FastAPI), orchestration (Prefect), drift (Evidently)
+# and SDV are added in weeks 3-4 to keep the resolver stable early on.
+
+python-dotenv~=1.0
+requests~=2.32
+
+pandas~=2.2
+pyarrow~=17.0
+
+scikit-learn~=1.5
+lightgbm~=4.5
+
+mlflow~=2.16
+great-expectations~=0.18
+
+pytest~=8.3

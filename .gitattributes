@@ -1,0 +1,17 @@
+# Normalise line endings so the committed fixture hashes identically on every
+# platform. Without this, Windows checkouts rewrite LF to CRLF and the sample
+# manifest's SHA-256 no longer matches.
+* text=auto eol=lf
+
+*.jsonl text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.py    text eol=lf
+*.md    text eol=lf
+*.toml  text eol=lf
+
+*.ps1   text eol=crlf
+
+*.parquet binary
+*.pkl     binary

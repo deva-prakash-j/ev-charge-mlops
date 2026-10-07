@@ -1,0 +1,920 @@
+{
+  "source": "ACN-Data",
+  "files": [
+    {
+      "file": "sessions_caltech.jsonl",
+      "columns": [
+        {
+          "column": "_id",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 31424,
+          "dtype": "str",
+          "value_structures": {
+            "mongo_object_id": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "5b********************d2",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "clusterID",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 2,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 29343,
+            "numeric": 2081
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "connectionTime",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 31380,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "disconnectTime",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 31386,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "doneChargingTime",
+          "non_null": 29369,
+          "null_fraction": 0.0654,
+          "distinct_values": 29253,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 29369
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "kWhDelivered",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 15642,
+          "dtype": "float",
+          "value_structures": {
+            "numeric": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "7.*32",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "sessionID",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 31424,
+          "dtype": "str",
+          "value_structures": {
+            "acn_session_id": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "2_**********************************12",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "siteID",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 2,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 29343,
+            "numeric": 2081
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "spaceID",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 55,
+          "dtype": "str",
+          "value_structures": {
+            "free_text": 31424
+          },
+          "free_text_values_scanned": 31424,
+          "example_masked": "CA**96",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "stationID",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 55,
+          "dtype": "str",
+          "value_structures": {
+            "dashed_numeric_id": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "2-*******62",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "timezone",
+          "non_null": 31424,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "iana_timezone": 31424
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Am***************es",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userID",
+          "non_null": 16388,
+          "null_fraction": 0.4785,
+          "distinct_values": 571,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "00*****22",
+          "direct_pii_matches": {},
+          "classification": "PSEUDONYMOUS_IDENTIFIER"
+        },
+        {
+          "column": "userInputs",
+          "non_null": 0,
+          "null_fraction": 1.0,
+          "distinct_values": 0,
+          "dtype": "NoneType",
+          "value_structures": {},
+          "free_text_values_scanned": 0,
+          "example_masked": null,
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].WhPerMile",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 121,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].kWhRequested",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 660,
+          "dtype": "float",
+          "value_structures": {
+            "numeric": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].milesRequested",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 75,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].minutesAvailable",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 686,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].modifiedAt",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 16380,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Mo*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].paymentRequired",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "bool",
+          "value_structures": {
+            "boolean": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].requestedDeparture",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 16383,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Tu*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].userID",
+          "non_null": 16388,
+          "null_fraction": 0.0,
+          "distinct_values": 571,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 16388
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "**",
+          "direct_pii_matches": {},
+          "classification": "PSEUDONYMOUS_IDENTIFIER"
+        }
+      ]
+    },
+    {
+      "file": "sessions_jpl.jsonl",
+      "columns": [
+        {
+          "column": "_id",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 33638,
+          "dtype": "str",
+          "value_structures": {
+            "mongo_object_id": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "5c********************b4",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "clusterID",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "connectionTime",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 33511,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "disconnectTime",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 33581,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "doneChargingTime",
+          "non_null": 31601,
+          "null_fraction": 0.0606,
+          "distinct_values": 31421,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 31601
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Tu*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "kWhDelivered",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 19396,
+          "dtype": "float",
+          "value_structures": {
+            "numeric": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "9.*83",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "sessionID",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 33638,
+          "dtype": "str",
+          "value_structures": {
+            "acn_session_id": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "1_**********************************87",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "siteID",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "spaceID",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 52,
+          "dtype": "str",
+          "value_structures": {
+            "free_text": 33638
+          },
+          "free_text_values_scanned": 33638,
+          "example_masked": "AG***32",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "stationID",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 52,
+          "dtype": "str",
+          "value_structures": {
+            "dashed_numeric_id": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "1-*******00",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "timezone",
+          "non_null": 33638,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "iana_timezone": 33638
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Am***************es",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userID",
+          "non_null": 31459,
+          "null_fraction": 0.0648,
+          "distinct_values": 522,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "00*****33",
+          "direct_pii_matches": {},
+          "classification": "PSEUDONYMOUS_IDENTIFIER"
+        },
+        {
+          "column": "userInputs",
+          "non_null": 0,
+          "null_fraction": 1.0,
+          "distinct_values": 0,
+          "dtype": "NoneType",
+          "value_structures": {},
+          "free_text_values_scanned": 0,
+          "example_masked": null,
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].WhPerMile",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 147,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].kWhRequested",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 929,
+          "dtype": "float",
+          "value_structures": {
+            "numeric": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].milesRequested",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 80,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "**",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].minutesAvailable",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 803,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].modifiedAt",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 31355,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].paymentRequired",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "bool",
+          "value_structures": {
+            "boolean": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].requestedDeparture",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 31433,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "We*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].userID",
+          "non_null": 31459,
+          "null_fraction": 0.0,
+          "distinct_values": 522,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 31459
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "PSEUDONYMOUS_IDENTIFIER"
+        }
+      ]
+    },
+    {
+      "file": "sessions_office001.jsonl",
+      "columns": [
+        {
+          "column": "_id",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1683,
+          "dtype": "str",
+          "value_structures": {
+            "mongo_object_id": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "5c********************13",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "clusterID",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "connectionTime",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1683,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Mo*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "disconnectTime",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1683,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Tu*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "doneChargingTime",
+          "non_null": 1629,
+          "null_fraction": 0.0321,
+          "distinct_values": 1628,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 1629
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Mo*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "kWhDelivered",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1637,
+          "dtype": "float",
+          "value_structures": {
+            "numeric": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "6.*46",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "sessionID",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1683,
+          "dtype": "str",
+          "value_structures": {
+            "acn_session_id": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "19**************************************46",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "siteID",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "spaceID",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 8,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "**",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "stationID",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 8,
+          "dtype": "str",
+          "value_structures": {
+            "dashed_numeric_id": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "19***********33",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "timezone",
+          "non_null": 1683,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "str",
+          "value_structures": {
+            "iana_timezone": 1683
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Am***************es",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userID",
+          "non_null": 585,
+          "null_fraction": 0.6524,
+          "distinct_values": 22,
+          "dtype": "str",
+          "value_structures": {
+            "zero_padded_numeric_id": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "00*****40",
+          "direct_pii_matches": {},
+          "classification": "PSEUDONYMOUS_IDENTIFIER"
+        },
+        {
+          "column": "userInputs",
+          "non_null": 0,
+          "null_fraction": 1.0,
+          "distinct_values": 0,
+          "dtype": "NoneType",
+          "value_structures": {},
+          "free_text_values_scanned": 0,
+          "example_masked": null,
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].WhPerMile",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 21,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "***",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].kWhRequested",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 48,
+          "dtype": "float",
+          "value_structures": {
+            "numeric": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].milesRequested",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 22,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "**",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].minutesAvailable",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 54,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "**",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].modifiedAt",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 585,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Mo*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].paymentRequired",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 1,
+          "dtype": "bool",
+          "value_structures": {
+            "boolean": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].requestedDeparture",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 585,
+          "dtype": "str",
+          "value_structures": {
+            "http_date": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "Mo*************************MT",
+          "direct_pii_matches": {},
+          "classification": "NON_IDENTIFYING"
+        },
+        {
+          "column": "userInputs[].userID",
+          "non_null": 585,
+          "null_fraction": 0.0,
+          "distinct_values": 22,
+          "dtype": "int",
+          "value_structures": {
+            "numeric": 585
+          },
+          "free_text_values_scanned": 0,
+          "example_masked": "****",
+          "direct_pii_matches": {},
+          "classification": "PSEUDONYMOUS_IDENTIFIER"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "direct_pii_detected": false,
+    "patterns_checked": [
+      "credit_card_like",
+      "email",
+      "ip_address",
+      "latlong",
+      "phone",
+      "ssn_like",
+      "street_address"
+    ],
+    "pseudonymous_columns": [
+      "userID",
+      "userInputs[].userID"
+    ],
+    "declared_identifier_columns": [
+      "sessionID",
+      "_id",
+      "userID"
+    ],
+    "conclusion": "No direct PII detected. Pseudonymous identifiers are present and are excluded from the published sample and the feature matrix."
+  }
+}

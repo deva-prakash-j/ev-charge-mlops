@@ -1,0 +1,208 @@
+_comment: Aggregate statistics derived from the licensed ACN-Data extract. Contains
+  no individual records. Used to generate the synthetic fixture in data/sample/ so
+  the pipeline runs without credentials.
+derived_from:
+  source: ACN-Data
+  window: 2019-07..2020-06
+  shift_month: 2020-03
+  sessions_profiled: 21364
+arrival_hour_weights:
+  0: 18
+  1: 5
+  2: 6
+  3: 34
+  4: 175
+  5: 1086
+  6: 3511
+  7: 4185
+  8: 1870
+  9: 1979
+  10: 1297
+  11: 1129
+  12: 1125
+  13: 1040
+  14: 898
+  15: 930
+  16: 784
+  17: 427
+  18: 327
+  19: 180
+  20: 159
+  21: 123
+  22: 59
+  23: 17
+day_of_week_weights:
+  0: 4211
+  1: 4430
+  2: 4218
+  3: 4168
+  4: 3366
+  5: 517
+  6: 454
+wh_per_mile_choices:
+- 200
+- 205
+- 207
+- 208
+- 211
+- 213
+- 214
+- 215
+- 216
+- 220
+- 222
+- 225
+sites:
+  '0001':
+    monthly_counts:
+      2019-07: 1489
+      2019-08: 1509
+      2019-09: 1421
+      2019-10: 1672
+      2019-11: 1353
+      2019-12: 1358
+      2020-01: 1479
+      2020-02: 1402
+      2020-03: 835
+      2020-04: 201
+      2020-05: 251
+      2020-06: 371
+    stations: 52
+    clusters:
+    - '0001'
+    timezone: America/Los_Angeles
+    user_inputs_present_rate: 0.9708
+    kwh_delivered:
+      pre_shift:
+        log_mean: 2.3811
+        log_sd: 0.8563
+        min: 0.503
+        max: 63.504
+      post_shift:
+        log_mean: 2.4364
+        log_sd: 0.8299
+        min: 0.541
+        max: 61.668
+    connected_hours:
+      pre_shift:
+        log_mean: 1.7756
+        log_sd: 0.6834
+        min: 0.067
+        max: 15.784
+      post_shift:
+        log_mean: 1.6994
+        log_sd: 0.6695
+        min: 0.199
+        max: 14.342
+    kwh_requested:
+      log_mean: 3.0491
+      log_sd: 0.7062
+      min: 2.5
+      max: 150.0
+    minutes_available:
+      log_mean: 5.7279
+      log_sd: 0.7118
+      min: 30.0
+      max: 1229.0
+  '0002':
+    monthly_counts:
+      2019-07: 820
+      2019-08: 860
+      2019-09: 829
+      2019-10: 930
+      2019-11: 770
+      2019-12: 648
+      2020-01: 822
+      2020-02: 847
+      2020-03: 381
+      2020-04: 24
+      2020-05: 17
+      2020-06: 40
+    stations: 53
+    clusters:
+    - 0039
+    timezone: America/Los_Angeles
+    user_inputs_present_rate: 0.8278
+    kwh_delivered:
+      pre_shift:
+        log_mean: 1.5993
+        log_sd: 1.0988
+        min: 0.506
+        max: 53.579
+      post_shift:
+        log_mean: 1.4993
+        log_sd: 1.1383
+        min: 0.51
+        max: 52.338
+    connected_hours:
+      pre_shift:
+        log_mean: 1.4366
+        log_sd: 0.884
+        min: 0.089
+        max: 52.4
+      post_shift:
+        log_mean: 1.3225
+        log_sd: 1.022
+        min: 0.133
+        max: 38.167
+    kwh_requested:
+      log_mean: 2.7077
+      log_sd: 0.6874
+      min: 2.5
+      max: 124.8
+    minutes_available:
+      log_mean: 5.3464
+      log_sd: 0.7684
+      min: 30.0
+      max: 758.56
+  0019:
+    monthly_counts:
+      2019-07: 72
+      2019-08: 123
+      2019-09: 129
+      2019-10: 148
+      2019-11: 113
+      2019-12: 133
+      2020-01: 140
+      2020-02: 77
+      2020-03: 48
+      2020-04: 15
+      2020-05: 19
+      2020-06: 18
+    stations: 8
+    clusters:
+    - '0102'
+    timezone: America/Los_Angeles
+    user_inputs_present_rate: 0.1401
+    kwh_delivered:
+      pre_shift:
+        log_mean: 2.383
+        log_sd: 0.973
+        min: 0.52
+        max: 53.066
+      post_shift:
+        log_mean: 2.8296
+        log_sd: 0.8273
+        min: 0.76
+        max: 44.77
+    connected_hours:
+      pre_shift:
+        log_mean: 1.5685
+        log_sd: 0.7152
+        min: 0.2
+        max: 32.43
+      post_shift:
+        log_mean: 1.7757
+        log_sd: 0.6787
+        min: 0.557
+        max: 67.679
+    kwh_requested:
+      log_mean: 3.1973
+      log_sd: 0.739
+      min: 5.34
+      max: 114.24
+    minutes_available:
+      log_mean: 5.8514
+      log_sd: 0.5312
+      min: 59.0
+      max: 940.24

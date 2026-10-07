@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evcharge"
+version = "0.1.0"
+description = "Drift-aware MLOps pipeline for EV charge-session prediction"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# Great Expectations 0.18 pulls in deprecated marshmallow/pyparsing calls.
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore:.*Number.*field should not be instantiated.*:UserWarning",
+]

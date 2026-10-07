@@ -1,0 +1,62 @@
+# Dataset layout, schema contract and leakage controls.
+# Secrets live in .env, never here.
+
+source:
+  name: ACN-Data
+  api_url: https://ev.caltech.edu/api/v1/
+  citation: >-
+    Zachary J. Lee, Tongxin Li and Steven H. Low. "ACN-Data: Analysis and
+    Applications of an Open EV Charging Dataset." Proceedings of the Tenth ACM
+    International Conference on Future Energy Systems (e-Energy '19), 2019.
+  sites: [caltech, jpl, office001]
+
+target: kWhDelivered
+
+timestamps:
+  # ACN-Data serves HTTP-date strings, always GMT.
+  format: "%a, %d %b %Y %H:%M:%S GMT"
+  partition_tz_column: timezone
+
+# Known at plug-in time — the only columns a served model may consume.
+plug_in_time_columns:
+  - siteID
+  - stationID
+  - spaceID
+  - clusterID
+  - connectionTime
+  - timezone
+  - kWhRequested
+  - milesRequested
+  - minutesAvailable
+  - WhPerMile
+  - requestedDeparture
+  - paymentRequired
+
+# Only observable after the session ends. Never features for kWhDelivered.
+post_hoc_columns:
+  - disconnectTime
+  - doneChargingTime
+  - kWhDelivered
+  - userInputs_count
+
+# Pseudonymous identifiers: retained locally for grouping, excluded from
+# the committed sample fixture and from the feature matrix.
+identifier_columns:
+  - sessionID
+  - _id
+  - userID
+
+validation:
+  kwh_delivered:
+    min: 0.0
+    max: 200.0
+  minutes_available:
+    min: 0
+    max: 10080  # one week
+  max_session_hours: 168
+
+split:
+  # Temporal, never random: a random split leaks across the 2020 regime change.
+  strategy: temporal
+  train_end: "2020-02-29"
+  reference_window_start: "2019-07-01"
