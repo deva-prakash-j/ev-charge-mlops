@@ -204,7 +204,18 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
                     .round(4)
                     .to_dict()
                 )
-                mlflow.sklearn.log_model(estimator, artifact_path="model")
+                # Signature and example are logged so the V2 serving layer can
+                # validate request payloads against the trained schema.
+                example = x_train.head(5)
+                signature = mlflow.models.infer_signature(
+                    example, estimator.predict(example)
+                )
+                mlflow.sklearn.log_model(
+                    estimator,
+                    artifact_path="model",
+                    signature=signature,
+                    input_example=example,
+                )
 
             results[name] = run_metrics
 
@@ -230,7 +241,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)-7s %(message)s")
-    logging.getLogger("mlflow").setLevel(logging.ERROR)
+    for noisy in ("mlflow", "py.warnings"):
+        logging.getLogger(noisy).setLevel(logging.ERROR)
 
     try:
         settings = get_settings()

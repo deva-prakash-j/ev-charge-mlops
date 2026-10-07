@@ -4,7 +4,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy prediction
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-53%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-58%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -132,14 +132,27 @@ On Linux/macOS substitute `python3.11 -m venv .venv` and `.venv/bin/python`.
 
 ### Demo path — no credentials required
 
+One command runs the whole pipeline against the committed synthetic fixture:
+
 ```powershell
-.\.venv\Scripts\python.exe -m evcharge.ingest.normalise   --source sample
+.\.venv\Scripts\python.exe -m evcharge.pipeline --source sample
+```
+
+```
+normalise  ok    0.68s   2,579 rows, 3 sites, 2019-07..2020-06
+contract   ok    3.95s   2,579 clean, 0 quarantined, 12/12 expectations passed
+train      ok   12.37s   best: hist_gradient_boosting (validation MAE 6.342)
+```
+
+No API token, no manual edits. Stages can also be run individually:
+
+```powershell
+.\.venv\Scripts\python.exe -m evcharge.ingest.normalise    --source sample
 .\.venv\Scripts\python.exe -m evcharge.validation.contract --source sample
 .\.venv\Scripts\python.exe -m evcharge.models.train        --source sample
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Runs against the committed synthetic fixture. No API token, no manual edits.
 Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
 ### Full path — requires an ACN-Data token
@@ -147,11 +160,8 @@ Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 ```powershell
 Copy-Item .env.example .env      # then paste your token into ACN_API_TOKEN
 .\.venv\Scripts\python.exe -m evcharge.ingest.check_access
-.\.venv\Scripts\python.exe -m evcharge.ingest.fetch_sessions
+.\.venv\Scripts\python.exe -m evcharge.pipeline --source raw --fetch
 .\.venv\Scripts\python.exe -m evcharge.validation.pii_audit
-.\.venv\Scripts\python.exe -m evcharge.ingest.normalise    --source raw
-.\.venv\Scripts\python.exe -m evcharge.validation.contract --source raw
-.\.venv\Scripts\python.exe -m evcharge.models.train        --source raw
 ```
 
 `.env` is gitignored. The token is never logged — it is wrapped in a `Secret` type whose
@@ -177,12 +187,15 @@ ev-charge-mlops/
 │   └── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored)
 ├── src/evcharge/
 │   ├── config.py                 Settings, secret handling, YAML loading
+│   ├── pipeline.py               Single entry point: normalise → contract → train
 │   ├── ingest/                   API client, retrieval, normalisation
 │   ├── validation/               PII audit, data contract
 │   ├── features/                 Shared builder used by training and serving
 │   ├── models/                   Baselines, temporal evaluation, MLflow
 │   └── fixtures/                 Aggregate profiling, synthetic generation
-├── tests/                        53 tests
+├── docs/architecture.md          V1 and proposed V2 diagrams
+├── STACK.md                      Tool choices against named alternatives
+├── tests/                        58 tests
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -240,9 +253,9 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Shared feature module with parity and leakage tests | Done |
 | Baseline models and temporal evaluation | Done |
 | MLflow experiment tracking | Done |
-| Test suite | Done — 53 tests |
-| Single-command pipeline entry point | In progress |
-| Architecture diagram and `STACK.md` | In progress |
+| Single-command pipeline entry point | Done |
+| Architecture diagrams and `STACK.md` | Done |
+| Test suite | Done — 58 tests |
 
 ## Planned enhancements — V2 (Final)
 
