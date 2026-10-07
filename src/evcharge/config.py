@@ -16,6 +16,16 @@ CONFIG_DIR = PROJECT_ROOT / "configs"
 DEFAULT_API_URL = "https://ev.caltech.edu/api/v1/"
 SITES: tuple[str, ...] = ("caltech", "jpl", "office001")
 
+MISSING_TOKEN_HELP = (
+    "ACN_API_TOKEN is not set. It is only needed to download the licensed\n"
+    "dataset; the sample path runs without it:\n"
+    "    python -m evcharge.pipeline --source sample\n\n"
+    "To use the real data:\n"
+    "  1. Copy-Item .env.example .env\n"
+    "  2. Paste your token from https://ev.caltech.edu/dataset into .env\n"
+    "  3. Re-run. (.env is gitignored - never commit it.)"
+)
+
 
 class ConfigError(RuntimeError):
     """Raised when required configuration is missing or malformed."""
@@ -40,10 +50,18 @@ class Secret:
 
 @dataclass(frozen=True)
 class Settings:
-    acn_api_token: Secret
+    # Optional: only the API client needs it. The sample path must run with no
+    # credentials at all, so requiring it here would break a fresh clone.
+    acn_api_token: Secret | None = None
     acn_api_url: str = DEFAULT_API_URL
     data_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "data")
     artifacts_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "artifacts")
+
+    def require_token(self) -> Secret:
+        """Fetch the token, failing with setup instructions if it is absent."""
+        if self.acn_api_token is None:
+            raise ConfigError(MISSING_TOKEN_HELP)
+        return self.acn_api_token
 
     @property
     def raw_dir(self) -> Path:
@@ -61,6 +79,10 @@ class Settings:
     def sample_dir(self) -> Path:
         return self.data_dir / "sample"
 
+    @property
+    def models_dir(self) -> Path:
+        return PROJECT_ROOT / "models"
+
 
 def load_config(name: str = "data") -> dict[str, Any]:
     """Load a YAML config from configs/ by stem name."""
@@ -75,17 +97,14 @@ def load_config(name: str = "data") -> dict[str, Any]:
 
 
 def get_settings() -> Settings:
-    """Load settings, preferring real environment variables over .env."""
+    """Load settings, preferring real environment variables over .env.
+
+    A missing token is not an error here: only the API client requires one.
+    """
     load_dotenv(PROJECT_ROOT / ".env", override=False)
 
-    token = (os.getenv("ACN_API_TOKEN") or "").strip()
-    if not token:
-        raise ConfigError(
-            "ACN_API_TOKEN is not set.\n"
-            "  1. Copy-Item .env.example .env\n"
-            "  2. Paste your token from https://ev.caltech.edu/dataset into .env\n"
-            "  3. Re-run. (.env is gitignored — never commit it.)"
-        )
+    raw_token = (os.getenv("ACN_API_TOKEN") or "").strip()
+    token = Secret(raw_token) if raw_token else None
 
     url = (os.getenv("ACN_API_URL") or DEFAULT_API_URL).strip()
     if not url.startswith("https://"):
@@ -102,7 +121,7 @@ def get_settings() -> Settings:
         artifacts_dir = PROJECT_ROOT / artifacts_dir
 
     return Settings(
-        acn_api_token=Secret(token),
+        acn_api_token=token,
         acn_api_url=url,
         data_dir=data_dir,
         artifacts_dir=artifacts_dir,

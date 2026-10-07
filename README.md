@@ -4,7 +4,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy prediction
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-58%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-60%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -118,6 +118,8 @@ Top features by permutation importance on validation: `kWhRequested` (2.54),
 
 Requires Python 3.11.
 
+**Windows (PowerShell)**
+
 ```powershell
 git clone https://github.com/deva-prakash-j/ev-charge-mlops.git
 cd ev-charge-mlops
@@ -126,7 +128,17 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-On Linux/macOS substitute `python3.11 -m venv .venv` and `.venv/bin/python`.
+**Linux / macOS**
+
+```bash
+git clone https://github.com/deva-prakash-j/ev-charge-mlops.git
+cd ev-charge-mlops
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -e .
+```
+
+Substitute `.venv/bin/python` for `.\.venv\Scripts\python.exe` in every command below.
 
 ## Execution
 
@@ -153,7 +165,36 @@ No API token, no manual edits. Stages can also be run individually:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
+Exploratory analysis, also credential-free:
+
+```powershell
+.\.venv\Scripts\python.exe -m jupyter notebook notebooks/01_data_understanding.ipynb
+```
+
 Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
+
+### Model artefacts
+
+Training writes the selected model to `models/<source>/`:
+
+| File | Purpose |
+|---|---|
+| `model.joblib` | Fitted estimator |
+| `feature_spec.json` | Category vocabulary and column order it was fitted with |
+| `metrics.json` | Full slice-wise evaluation |
+| `MODEL_CARD.md` | Target, provenance, git commit, headline metrics |
+
+The model and its feature spec are saved together deliberately — the estimator alone
+cannot reproduce its own input encoding. `models/sample/` is committed so an evaluator has
+a concrete artefact without running training first; `models/raw/` is gitignored.
+
+```python
+import joblib
+from evcharge.features.build import FeatureSpec
+
+model = joblib.load("models/sample/model.joblib")
+spec = FeatureSpec.load("models/sample/feature_spec.json")
+```
 
 ### Full path — requires an ACN-Data token
 
@@ -181,10 +222,17 @@ ev-charge-mlops/
 ├── configs/                      Declarative configuration, no secrets
 │   ├── data.yaml                 Schema contract, leakage controls, split boundary
 │   ├── contract.yaml             Expectations and quarantine rules
+│   ├── features.yaml             Feature specification
+│   ├── model.yaml                Models, splits, tracking
 │   └── sample_profile.yaml       Aggregate statistics for fixture generation
 ├── data/
 │   ├── sample/                   Synthetic fixture (committed)
 │   └── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored)
+├── notebooks/
+│   └── 01_data_understanding.ipynb   EDA; imports src/, never redefines logic
+├── models/
+│   ├── sample/                   Trained model, feature spec, metrics, model card
+│   └── raw/                      Trained on licensed data (gitignored)
 ├── src/evcharge/
 │   ├── config.py                 Settings, secret handling, YAML loading
 │   ├── pipeline.py               Single entry point: normalise → contract → train
@@ -195,7 +243,7 @@ ev-charge-mlops/
 │   └── fixtures/                 Aggregate profiling, synthetic generation
 ├── docs/architecture.md          V1 and proposed V2 diagrams
 ├── STACK.md                      Tool choices against named alternatives
-├── tests/                        58 tests
+├── tests/                        60 tests
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -253,8 +301,8 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Shared feature module with parity and leakage tests | Done |
 | Baseline models and temporal evaluation | Done |
 | MLflow experiment tracking | Done |
-| Single-command pipeline entry point | Done |
-| Architecture diagrams and `STACK.md` | Done |
+| Single-command pipeline entry point | Done || EDA notebook | Done |
+| Model artefacts and model card | Done || Architecture diagrams and `STACK.md` | Done |
 | Test suite | Done — 58 tests |
 
 ## Planned enhancements — V2 (Final)

@@ -22,6 +22,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
@@ -108,6 +109,51 @@ def build_models(config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def persist_best_model(
+    settings: Settings,
+    source: str,
+    name: str,
+    estimator: Any,
+    spec: Any,
+    metrics: dict[str, Any],
+) -> Path:
+    """Write the selected model next to the exact feature spec it was fitted with.
+
+    Saving them together is what makes the artefact loadable later: the model
+    alone cannot reproduce its own input encoding.
+    """
+    import joblib
+
+    target = settings.models_dir / source
+    target.mkdir(parents=True, exist_ok=True)
+
+    joblib.dump(estimator, target / "model.joblib")
+    spec.save(target / "feature_spec.json")
+    (target / "metrics.json").write_text(
+        json.dumps(metrics, indent=2, default=str) + "\n", encoding="utf-8"
+    )
+    (target / "MODEL_CARD.md").write_text(
+        f"# Model card - {name} ({source})\n\n"
+        f"- Target: kWhDelivered (kWh delivered in a charging session)\n"
+        f"- Trained: {datetime.now(timezone.utc).isoformat(timespec='seconds')}\n"
+        f"- Git commit: {git_commit()[:12]}\n"
+        f"- Features: {len(spec.feature_names)}\n"
+        f"- Validation MAE: {metrics['validation']['overall']['mae']:.4f}\n"
+        f"- Post-shift MAE: {metrics.get('post_shift', {}).get('overall', {}).get('mae', float('nan')):.4f}\n\n"
+        "Inputs are plug-in-time only. Post-hoc columns (disconnectTime, "
+        "doneChargingTime) are rejected by the feature builder.\n\n"
+        "Load with:\n\n"
+        "```python\n"
+        "import joblib\n"
+        "from evcharge.features.build import FeatureSpec\n"
+        f"model = joblib.load('models/{source}/model.joblib')\n"
+        f"spec = FeatureSpec.load('models/{source}/feature_spec.json')\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    return target
+
+
 def run(settings: Settings, source: str) -> dict[str, Any]:
     import mlflow
 
@@ -145,10 +191,12 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
     commit = git_commit()
     data_hash = frame_hash(frame)
     results: dict[str, Any] = {}
+    fitted: dict[str, Any] = {}
 
     for name, estimator in build_models(model_config).items():
         with mlflow.start_run(run_name=f"{name}-{source}"):
             estimator.fit(x_train, y_train)
+            fitted[name] = estimator
 
             mlflow.log_params(
                 {
@@ -219,6 +267,14 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
 
             results[name] = run_metrics
 
+    best = min(
+        results, key=lambda m: results[m]["validation"]["overall"]["mae"]
+    )
+    model_dir = persist_best_model(
+        settings, source, best, fitted[best], spec, results[best]
+    )
+    logger.info("best model %s -> %s", best, model_dir)
+
     report = {
         "source": source,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -226,6 +282,8 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
         "data_sha256": data_hash,
         "rows": {k: len(v) for k, v in splits.items()},
         "feature_names": spec.feature_names,
+        "best_model": best,
+        "model_dir": str(model_dir),
         "results": results,
     }
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)

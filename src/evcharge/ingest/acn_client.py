@@ -32,7 +32,7 @@ class ACNDataClient:
         self._page_size = page_size
 
         self._session = requests.Session()
-        self._session.auth = (settings.acn_api_token.reveal(), "")
+        self._session.auth = (settings.require_token().reveal(), "")
         self._session.headers["Accept"] = "application/json"
 
         retry = Retry(

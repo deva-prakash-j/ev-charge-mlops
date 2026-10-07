@@ -14,9 +14,13 @@ data/*
 # ML artifacts
 mlruns/
 mlartifacts/
-*.pkl
 *.joblib
 great_expectations/uncommitted/
+
+# Models trained on the licensed extract are not published; the sample model is,
+# so an evaluator has a concrete artefact without running training first.
+models/raw/
+!models/sample/model.joblib
 
 # Generated run outputs. pii_audit.json is kept deliberately: it is the evidence
 # behind the no-PII declaration and cannot be regenerated without the licensed

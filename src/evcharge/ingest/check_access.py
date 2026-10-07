@@ -14,11 +14,12 @@ from evcharge.ingest.acn_client import ACNDataClient, ACNDataError
 def main() -> int:
     try:
         settings = get_settings()
+        secret = settings.require_token()
     except ConfigError as exc:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 2
 
-    token = settings.acn_api_token.reveal()
+    token = secret.reveal()
     print(f"[ok]   ACN_API_TOKEN loaded (length {len(token)}, ends ...{token[-4:]})")
     print(f"[ok]   ACN_API_URL   {settings.acn_api_url}")
     print(f"[ok]   DATA_DIR      {settings.data_dir}")
