@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_SEED = 20260407
 HTTP_DATE_FMT = "%a, %d %b %Y %H:%M:%S GMT"
 
+# Below this, the fitted delivered-vs-requested relationship is not trustworthy
+# and the marginal distribution is used instead.
+MIN_FIT_OBSERVATIONS = 50
+
 
 def _draw_lognormal(rng: np.random.Generator, params: dict[str, float], size: int) -> np.ndarray:
     if size == 0 or params["log_sd"] == 0:
@@ -102,11 +106,31 @@ def generate(profile: dict[str, Any], seed: int = DEFAULT_SEED) -> pd.DataFrame:
             regime = "post_shift" if month >= shift_month else "pre_shift"
 
             connections = _sample_timestamps(rng, month, count, hour_weights, dow_weights)
-            kwh = _draw_lognormal(rng, spec["kwh_delivered"][regime], count)
+            marginal_kwh = _draw_lognormal(rng, spec["kwh_delivered"][regime], count)
             hours = _draw_lognormal(rng, spec["connected_hours"][regime], count)
             requested = _draw_lognormal(rng, spec["kwh_requested"], count)
             minutes = _draw_lognormal(rng, spec["minutes_available"], count)
             has_inputs = rng.random(count) < present_rate
+
+            # Where a driver request exists and the site/regime had enough
+            # observations to fit a relationship, derive delivered energy from
+            # the request so the fixture carries learnable signal rather than
+            # only correct marginals. Otherwise fall back to the marginal.
+            relationship = spec["delivery_given_request"][regime]
+            bounds = spec["kwh_delivered"][regime]
+            if relationship["n"] >= MIN_FIT_OBSERVATIONS:
+                derived = np.exp(
+                    relationship["intercept"]
+                    + relationship["slope"] * np.log(requested)
+                    + rng.normal(0.0, relationship["residual_sd"], count)
+                )
+                kwh = np.where(
+                    has_inputs,
+                    np.clip(derived, bounds["min"], bounds["max"]),
+                    marginal_kwh,
+                )
+            else:
+                kwh = marginal_kwh
 
             for i in range(count):
                 # Arrival hours are sampled in site-local time, so localise before

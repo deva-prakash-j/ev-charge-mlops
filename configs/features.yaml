@@ -1,0 +1,39 @@
+# Feature specification for the plug-in-time model.
+#
+# Every column listed here must be knowable at the moment the vehicle plugs in.
+# The builder cross-checks this against post_hoc_columns in data.yaml and raises
+# if anything post-hoc leaks in.
+
+target: kWhDelivered
+
+timestamp_column: connectionTimeLocal
+
+categorical:
+  - siteID
+  - clusterID
+  - stationID
+
+numeric:
+  - kWhRequested
+  - milesRequested
+  - minutesAvailable
+  - WhPerMile
+
+# Derived in code; listed for documentation and for the leakage assertion.
+derived:
+  - arrival_hour
+  - arrival_hour_sin        # cyclical, so 23:00 and 00:00 are adjacent
+  - arrival_hour_cos
+  - arrival_dayofweek
+  - arrival_is_weekend
+  - arrival_month
+  - declared_duration_minutes
+  - declared_kwh_per_minute
+  - has_user_inputs         # ~27% of sessions have no driver request at all
+
+# Unseen categories at serve time map to this code rather than failing.
+unknown_category_code: -1
+
+# Deferred to V2: rolling site occupancy at arrival. It needs a point-in-time
+# join against session history, and computing it from the batch would make
+# predictions depend on which other rows happen to be scored together.

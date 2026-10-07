@@ -1,0 +1,46 @@
+# Training, splitting and experiment-tracking configuration.
+
+split:
+  # Temporal, never random: a random split leaks across the March 2020 regime
+  # change and produces a flattering, meaningless score.
+  train_end: "2019-12-31"
+  validation_end: "2020-02-29"
+
+  # The same fitted model is scored here to quantify drift impact separately
+  # from model quality. This is the V1 evidence that motivates V2 monitoring.
+  post_shift_start: "2020-04-01"
+  post_shift_end: "2020-06-30"
+
+baselines:
+  # A model that cannot beat these is not earning its complexity.
+  mean: {}
+  ridge:
+    alpha: 1.0
+
+model:
+  # HistGradientBoosting rather than LightGBM: on Windows, pyarrow's bundled
+  # OpenMP runtime conflicts with LightGBM's and crashes the process with an
+  # access violation whenever pyarrow is imported first. Since the pipeline
+  # reads Parquet, that ordering is unavoidable. HistGradientBoosting is the
+  # same algorithm family, handles NaN natively, and ships with scikit-learn,
+  # so it removes a whole class of environment-dependent failure.
+  name: hist_gradient_boosting
+  params:
+    loss: absolute_error        # matches MAE, the reported primary metric
+    max_iter: 400
+    learning_rate: 0.05
+    max_leaf_nodes: 31
+    min_samples_leaf: 40
+    l2_regularization: 1.0
+    early_stopping: false       # off for deterministic V1 runs
+    random_state: 42
+
+evaluation:
+  primary_metric: mae
+  # Reported per site and per regime, because an aggregate hides exactly the
+  # degradation this project exists to detect.
+  breakdowns: [siteID]
+
+mlflow:
+  experiment: ev-charge-kwh-baseline
+  tracking_uri: mlruns

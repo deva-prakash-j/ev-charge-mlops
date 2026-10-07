@@ -4,7 +4,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy prediction
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-42%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-53%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -83,8 +83,36 @@ pipeline is fully runnable with **no credentials and no data access**:
 | weekday share | 95.5% | 95.1% |
 | arrive 05:00–10:00 | 65.2% | 64.8% |
 
-Known fixture limitation: median connected hours is 5.08 vs 6.89 — the lognormal
-underfits that tail. Headline results in the technical report use the licensed extract.
+Known fixture limitations: median connected hours is 5.08 vs 6.89 (the lognormal underfits
+that tail), and the delivered-vs-requested relationship is log-linear by construction, so
+tree ensembles have less to exploit on the fixture than on real data. Headline results in
+the technical report use the licensed extract.
+
+## Baseline results
+
+Trained on the licensed extract. Temporal split: train ≤ 2019-12-31, validation
+2020-01-01..2020-02-29, and the **same fitted model** scored on 2020-04-01..2020-06-30 to
+separate drift impact from model quality.
+
+| Model | Train MAE | Validation MAE | Post-shift MAE | Validation R² | Post-shift R² |
+|---|---:|---:|---:|---:|---:|
+| Mean (floor) | 7.067 | 7.894 | 8.479 | −0.010 | −0.169 |
+| Ridge | 4.979 | 5.382 | 6.944 | 0.501 | 0.235 |
+| **HistGradientBoosting** | **3.701** | **4.399** | **6.272** | **0.579** | **0.355** |
+
+Two things matter here:
+
+1. The candidate beats the mean floor by **44%** on validation, so the added complexity is
+   earning its place rather than being assumed.
+2. Scored on post-shift data the **same model** degrades from 4.399 to 6.272 MAE — a **43%
+   increase in error** — and R² falls from 0.579 to 0.355. No uptime metric, latency graph
+   or error-rate dashboard would have shown any of this.
+
+That second row is the whole argument for V2: the failure is real, it is large, and it is
+invisible to conventional monitoring.
+
+Top features by permutation importance on validation: `kWhRequested` (2.54),
+`milesRequested` (1.58), `declared_duration_minutes` (0.48), `siteID` (0.22).
 
 ## Installation
 
@@ -107,10 +135,12 @@ On Linux/macOS substitute `python3.11 -m venv .venv` and `.venv/bin/python`.
 ```powershell
 .\.venv\Scripts\python.exe -m evcharge.ingest.normalise   --source sample
 .\.venv\Scripts\python.exe -m evcharge.validation.contract --source sample
+.\.venv\Scripts\python.exe -m evcharge.models.train        --source sample
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
 Runs against the committed synthetic fixture. No API token, no manual edits.
+Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
 ### Full path — requires an ACN-Data token
 
@@ -121,6 +151,7 @@ Copy-Item .env.example .env      # then paste your token into ACN_API_TOKEN
 .\.venv\Scripts\python.exe -m evcharge.validation.pii_audit
 .\.venv\Scripts\python.exe -m evcharge.ingest.normalise    --source raw
 .\.venv\Scripts\python.exe -m evcharge.validation.contract --source raw
+.\.venv\Scripts\python.exe -m evcharge.models.train        --source raw
 ```
 
 `.env` is gitignored. The token is never logged — it is wrapped in a `Secret` type whose
@@ -148,8 +179,11 @@ ev-charge-mlops/
 │   ├── config.py                 Settings, secret handling, YAML loading
 │   ├── ingest/                   API client, retrieval, normalisation
 │   ├── validation/               PII audit, data contract
+│   ├── features/                 Shared builder used by training and serving
+│   ├── models/                   Baselines, temporal evaluation, MLflow
 │   └── fixtures/                 Aggregate profiling, synthetic generation
-├── tests/                        42 tests
+├── tests/                        53 tests
+├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
 
@@ -179,6 +213,20 @@ Two traps are enforced in code and pinned by tests:
 Train/test splitting is **temporal, never random** — a random split leaks across the
 2020 regime change and would produce a flattering, meaningless score.
 
+## Stack decisions
+
+**HistGradientBoosting instead of LightGBM.** LightGBM was the original choice, but on
+Windows it crashes the process with an access violation whenever `pyarrow` is imported
+first — a conflict between pyarrow's bundled OpenMP runtime and LightGBM's. Since this
+pipeline reads Parquet, that import order is unavoidable. Depending on import order would
+leave a segfault waiting for anyone who runs this on Windows, so the model was switched to
+scikit-learn's `HistGradientBoostingRegressor`: the same algorithm family, native NaN
+support, and no additional native runtime to conflict.
+
+**No imputation for the gradient-boosted model.** Roughly 27% of sessions have no driver
+request at all. `has_user_inputs` makes that explicit and the estimator handles NaN
+natively, so missingness is treated as signal rather than silently filled with a median.
+
 ## Current status — V1 (Baseline)
 
 | Component | Status |
@@ -189,11 +237,12 @@ Train/test splitting is **temporal, never random** — a random split leaks acro
 | Great Expectations data contract + quarantine | Done |
 | Synthetic fixture for credential-free execution | Done |
 | Configuration layer | Done |
-| Test suite | Done — 42 tests |
-| Feature engineering module + parity tests | In progress |
-| Baseline model training and temporal evaluation | In progress |
-| MLflow experiment tracking | In progress |
+| Shared feature module with parity and leakage tests | Done |
+| Baseline models and temporal evaluation | Done |
+| MLflow experiment tracking | Done |
+| Test suite | Done — 53 tests |
 | Single-command pipeline entry point | In progress |
+| Architecture diagram and `STACK.md` | In progress |
 
 ## Planned enhancements — V2 (Final)
 

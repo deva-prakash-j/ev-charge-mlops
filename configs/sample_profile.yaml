@@ -104,6 +104,17 @@ sites:
       log_sd: 0.7118
       min: 30.0
       max: 1229.0
+    delivery_given_request:
+      pre_shift:
+        slope: 0.7053
+        intercept: 0.3156
+        residual_sd: 0.5542
+        n: 11338
+      post_shift:
+        slope: 0.5925
+        intercept: 0.6512
+        residual_sd: 0.5889
+        n: 1613
   '0002':
     monthly_counts:
       2019-07: 820
@@ -155,6 +166,17 @@ sites:
       log_sd: 0.7684
       min: 30.0
       max: 758.56
+    delivery_given_request:
+      pre_shift:
+        slope: 0.7975
+        intercept: -0.2111
+        residual_sd: 0.6544
+        n: 5413
+      post_shift:
+        slope: 0.7998
+        intercept: -0.3018
+        residual_sd: 0.7348
+        n: 372
   0019:
     monthly_counts:
       2019-07: 72
@@ -206,3 +228,14 @@ sites:
       log_sd: 0.5312
       min: 59.0
       max: 940.24
+    delivery_given_request:
+      pre_shift:
+        slope: 0.0
+        intercept: 0.0
+        residual_sd: 1.0
+        n: 45
+      post_shift:
+        slope: 0.3993
+        intercept: 1.517
+        residual_sd: 0.7776
+        n: 100

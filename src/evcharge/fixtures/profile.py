@@ -42,6 +42,30 @@ def _lognormal_params(values: pd.Series) -> dict[str, float]:
     }
 
 
+def _delivery_relationship(group: pd.DataFrame) -> dict[str, float]:
+    """Log-log fit of delivered against requested energy.
+
+    Without this the fixture would carry correct marginals but no relationship
+    between features and target, and any model trained on it would be unable to
+    beat the mean baseline.
+    """
+    pair = group[["kWhRequested", "kWhDelivered"]].dropna()
+    pair = pair[(pair["kWhRequested"] > 0) & (pair["kWhDelivered"] > 0)]
+    if len(pair) < 50:
+        return {"slope": 0.0, "intercept": 0.0, "residual_sd": 1.0, "n": len(pair)}
+
+    x = np.log(pair["kWhRequested"].to_numpy())
+    y = np.log(pair["kWhDelivered"].to_numpy())
+    slope, intercept = np.polyfit(x, y, 1)
+    residuals = y - (slope * x + intercept)
+    return {
+        "slope": round(float(slope), 4),
+        "intercept": round(float(intercept), 4),
+        "residual_sd": round(float(residuals.std(ddof=0)), 4),
+        "n": int(len(pair)),
+    }
+
+
 def build_profile(frame: pd.DataFrame) -> dict[str, Any]:
     frame = frame.copy()
     # siteID arrives mixed int/str in the raw feed; normalise for profiling only.
@@ -70,6 +94,10 @@ def build_profile(frame: pd.DataFrame) -> dict[str, Any]:
             },
             "kwh_requested": _lognormal_params(group["kWhRequested"]),
             "minutes_available": _lognormal_params(group["minutesAvailable"]),
+            "delivery_given_request": {
+                "pre_shift": _delivery_relationship(pre),
+                "post_shift": _delivery_relationship(post),
+            },
         }
 
     hours = window["connectionTimeLocal"].dt.hour.value_counts().sort_index()
@@ -104,12 +132,12 @@ def main() -> int:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 2
 
-    pattern = str(settings.interim_dir / "sessions" / "**" / "*.parquet")
+    pattern = str(settings.interim_dir / "raw" / "sessions" / "**" / "*.parquet")
     files = glob.glob(pattern, recursive=True)
     if not files:
         print(
             "[FAIL] No normalised sessions found. Run:\n"
-            "       python -m evcharge.ingest.normalise",
+            "       python -m evcharge.ingest.normalise --source raw",
             file=sys.stderr,
         )
         return 2

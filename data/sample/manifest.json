@@ -5,9 +5,9 @@
   "profile_window": "2019-07..2020-06",
   "shift_month": "2020-03",
   "sessions": 2579,
-  "sha256": "1e3082d1c93bed23cf90d6ffec3336d2f36ee0020c1037da984843c49f41d5a3",
+  "sha256": "4dcb2051c0d12e4710d137ab802906bff32761ee460bf4fef05710d1c9d9a376",
   "contains_pii": false,
   "contains_real_records": false,
   "note": "Real ACN-Data records are not redistributable. This fixture reproduces the schema and the aggregate distributions so the pipeline is runnable without credentials. Headline results in the report use the licensed extract.",
-  "generated_at_utc": "2026-10-07T09:08:22+00:00"
+  "generated_at_utc": "2026-10-07T10:32:52+00:00"
 }
