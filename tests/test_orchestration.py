@@ -123,6 +123,55 @@ def test_monthly_flow_runs_fetch_optional_normalise_and_batch_check(
     assert result["new_or_changed_batches"] == [{"month": "2020-03"}]
 
 
+def test_synthetic_monitor_scores_drift_without_fetching(tmp_path, monkeypatch):
+    settings = Settings(data_dir=tmp_path, artifacts_dir=tmp_path)
+    flows._save_monitor_state(
+        tmp_path / "monitoring" / "monthly_synthetic.json",
+        {
+            "version": flows.STATE_VERSION,
+            "source": "synthetic",
+            "batches": {"2020-04": {"fingerprint": "batch-1"}},
+        },
+    )
+    monkeypatch.setattr(flows, "get_settings", lambda: settings)
+    calls = []
+    monkeypatch.setattr(flows, "fetch_raw_data", lambda: calls.append("fetch"))
+    monkeypatch.setattr(
+        flows, "normalise_source", lambda source: calls.append(("normalise", source)) or {}
+    )
+    monkeypatch.setattr(flows, "validate_monthly_batches", lambda _source: [])
+    monkeypatch.setattr(
+        flows,
+        "score_and_export_drift",
+        lambda source, months: calls.append(("score", source, months))
+        or [{"batch_month": "2020-04", "drift_detected": False}],
+    )
+    monkeypatch.setattr(
+        flows, "_monthly_partitions", lambda _settings, _source: {"2020-04": []}
+    )
+
+    flows.monthly_monitoring_flow.fn(source="synthetic", fetch=True)
+
+    assert calls == [("normalise", "synthetic"), ("score", "synthetic", ["2020-04"])]
+
+
+def test_sample_monitor_validates_batches_without_drift_scoring(monkeypatch):
+    calls = []
+    monkeypatch.setattr(flows, "fetch_raw_data", lambda: calls.append("fetch"))
+    monkeypatch.setattr(flows, "normalise_source", lambda _source: {})
+    monkeypatch.setattr(flows, "validate_monthly_batches", lambda _source: [])
+    monkeypatch.setattr(
+        flows,
+        "score_and_export_drift",
+        lambda source, months: calls.append("score"),
+    )
+
+    result = flows.monthly_monitoring_flow.fn(source="sample", fetch=True)
+
+    assert calls == []
+    assert result["drift_reports"] == []
+
+
 def test_monthly_batches_validate_once_and_recheck_changed_data(
     tmp_path, monkeypatch
 ):

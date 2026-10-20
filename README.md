@@ -5,7 +5,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-
 ![status](https://img.shields.io/badge/version-V2%20drift--aware-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
 [![CI](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-108%20collected-brightgreen)
+![tests](https://img.shields.io/badge/tests-127%20collected-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Track:** Bring Your Own Capstone ·
@@ -101,7 +101,8 @@ The repository is the whole submission, and it ships no licensed records:
 | Extract and reference manifests (counts, SHA-256) | `data/raw/manifest.json`, `data/reference/manifest.json` | Tracked; used to verify a fetched extract |
 | Frozen drift reference | Not included | `python -m evcharge.validation.reference --source raw` |
 | Licensed benchmarks (aggregate scores and data fingerprints) | `benchmarks/` | Tracked |
-| Synthetic fixture | `data/sample/` | Tracked; runs every stage without credentials |
+| Synthetic fixture (2,579 sessions, 2019-07 to 2020-06) | `data/sample/` | Tracked; runs every training, registry and serving stage without credentials |
+| Full-period synthetic dataset (66,745 sessions, 2018-04 to 2021-09) | `data/synthetic/` | Tracked; also runs the drift reference, monitoring, detector evaluation and recovery experiment without credentials ([full drift path](#full-drift-path--synthetic-data-no-credentials-required)) |
 
 See [`DATA_LICENCE.md`](DATA_LICENCE.md) for the publisher's terms, the reproduction steps
 and a disclosure about identifier values found in early git history.
@@ -110,7 +111,9 @@ The public repository ships instead:
 
 - the **retrieval script**, so acquisition is reproducible;
 - a **manifest** with SHA-256 hashes and exact row counts, so provenance is verifiable;
-- a **synthetic fixture** (`data/sample/`) generated from aggregate statistics only.
+- a **synthetic fixture** (`data/sample/`) generated from aggregate statistics only;
+- a **full-period synthetic dataset** (`data/synthetic/`), also generated from aggregate
+  statistics, for the credential-free drift path.
 
 The fixture reproduces the schema and the marginal distributions closely enough that the
 pipeline is fully runnable with **no credentials and no data access**:
@@ -249,6 +252,65 @@ Exploratory analysis, also credential-free:
 
 Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
+### Full drift path — synthetic data, no credentials required
+
+The 2,579-session fixture keeps CI fast but covers one year at 12% volume, too little for
+the drift study. The repository therefore also ships `data/synthetic/`: 66,745 synthetic
+sessions with the licensed extract's sites, period (2018-04 to 2021-09) and monthly
+volumes, gzipped to 2.6 MB. Every session is drawn with a fixed seed from aggregate
+statistics in [`configs/synthetic_profile.yaml`](configs/synthetic_profile.yaml): monthly
+counts plus per-site, per-quarter quantiles and regression/copula parameters, each fitted
+on at least 50 sessions. No record, identifier or timestamp is copied from ACN-Data.
+
+With it, an evaluator can run every drift-related stage without a token:
+
+```powershell
+.\.venv\Scripts\python.exe -m evcharge.pipeline --source synthetic                   # about 6 min
+.\.venv\Scripts\python.exe -m evcharge.validation.reference --source synthetic
+.\.venv\Scripts\python.exe scripts\evaluate_drift.py --source synthetic               # about 4 min
+.\.venv\Scripts\python.exe scripts\evaluate_retraining_recovery.py --source synthetic
+.\.venv\Scripts\python.exe -m evcharge.orchestration monitor --source synthetic
+```
+
+The pipeline registers `evcharge-synthetic-energy` and `evcharge-synthetic-dwell` in the
+local MLflow registry. The reference is frozen to `data/synthetic/reference/`
+(gitignored, rebuilt by the second command). The two scripts write
+`artifacts/drift/detector_evaluation_synthetic.json` and
+`artifacts/drift/retraining_recovery_synthetic.json`. The Prefect monitor scores every
+monthly batch against that reference, writes Evidently JSON/HTML reports to
+`artifacts/drift/synthetic_<month>.*`, pushes the scores to `PUSHGATEWAY_URL` (the Compose
+Pushgateway by default, where the Grafana dashboard's `source` selector shows them) and
+starts the gated retraining flow when the latest month alerts. Synthetic data is never
+downloaded, so the monitor needs no `--no-fetch`.
+
+The synthetic run reproduces most of the licensed study's conclusions, not its exact
+numbers:
+
+| Check | Licensed extract | Synthetic dataset (default seed) |
+|---|---|---|
+| Energy MAE, validation → post-shift (HistGradientBoosting) | 4.40 → 6.27 kWh (+43%) | 4.71 → 6.65 kWh (+41%) |
+| Naive mean, validation MAE | 7.89 kWh | 7.33 kWh |
+| H1: April 2020 volume vs reference median, sites 0001 / 0002 | −86% / −97% | −86% / −97% (counts copied from the profile) |
+| March 2020 delivered-energy PSI (alert above 0.2) | 0.013, no alert | 0.008, no alert |
+| April 2020 delivered-energy PSI | 0.231, **alert** | 0.165, no alert |
+| May 2020 delivered-energy PSI | 0.324, alert | 0.413, alert |
+| Leave-one-month-out false alarms | 0 / 8 | 0 / 8 |
+| First controlled-shift alert | +30% energy | +50% energy |
+| H2: p90 requested-energy change, sites 0002 / 0019 | +57% / +186% | +66% / +170% |
+| H3: change in median declared − delivered gap | 3.77 kWh | 4.86 kWh |
+| Retraining recovery, best post-shift MAE vs ceiling | 5.71 vs 4.84 kWh, not met | 5.69 vs 5.18 kWh, not met |
+
+April 2020 has only 240 sessions, so its PSI is close to the threshold and depends on the
+draw: across eight generator seeds the synthetic April PSI ranged from 0.13 to 0.23
+(two of eight alerted), while March never alerted (≤ 0.017) and May always did
+(0.23–0.52). The committed dataset uses the seed fixed before evaluation, so on it the
+detector first alerts in May, one month later than on the licensed data.
+
+Known limits: dwell time is less learnable on synthetic data (Ridge 2.74 h beats
+HistGradientBoosting 2.78 h, against 1.66 h on the licensed extract), the synthetic dwell
+median is 5.6 h against 6.2 h, and station identities carry no signal because stations
+are drawn uniformly. Headline results in the report and slides use the licensed extract.
+
 ### Prefect workflow automation
 
 The setup above already installs the orchestration and monitoring extras. After a bare
@@ -320,8 +382,11 @@ study and the separate held-out recovery experiment with:
 .\.venv\Scripts\python.exe scripts\evaluate_retraining_recovery.py
 ```
 
-Both commands require the licensed normalized raw partitions, frozen reference, and a
-raw Production energy model. The detector alerts on April 2020 delivered-energy PSI,
+Both commands default to the licensed normalized raw partitions, frozen reference, and a
+raw Production energy model; add `--source synthetic` to run them on the committed
+synthetic dataset instead (see the
+[full drift path](#full-drift-path--synthetic-data-no-credentials-required)). On the
+licensed data the detector alerts on April 2020 delivered-energy PSI,
 with zero leave-one-month-out false alarms and a first controlled sensitivity crossing
 at +30% energy shift. The 10% post-shift recovery target was **not** met by either
 chronological retraining experiment; the measured failure is documented rather than
@@ -516,12 +581,17 @@ outputs (aggregate metrics only):
 .\.venv\Scripts\python.exe scripts\make_report_figures.py
 ```
 
-### Regenerating the fixture
+### Regenerating the synthetic data
 
 ```powershell
-.\.venv\Scripts\python.exe -m evcharge.fixtures.profile    # needs the licensed extract
-.\.venv\Scripts\python.exe -m evcharge.fixtures.generate   # needs only the profile YAML
+.\.venv\Scripts\python.exe -m evcharge.fixtures.profile               # needs the licensed extract
+.\.venv\Scripts\python.exe -m evcharge.fixtures.generate              # needs only the profile YAML
+.\.venv\Scripts\python.exe -m evcharge.fixtures.synthetic profile     # needs the licensed extract
+.\.venv\Scripts\python.exe -m evcharge.fixtures.synthetic generate    # needs only the profile YAML
 ```
+
+Generation is deterministic for a given seed; `data/synthetic/manifest.json` records the
+SHA-256 of the uncompressed JSONL, which a test checks.
 
 ## Repository structure
 
@@ -532,9 +602,11 @@ ev-charge-mlops/
 │   ├── contract.yaml             Expectations and quarantine rules
 │   ├── features.yaml             Feature specification
 │   ├── model.yaml                Models, splits, tracking
-│   └── sample_profile.yaml       Aggregate statistics for fixture generation
+│   ├── sample_profile.yaml       Aggregate statistics for fixture generation
+│   └── synthetic_profile.yaml    Aggregate statistics for the full-period synthetic dataset
 ├── data/
 │   ├── sample/                   Synthetic fixture (committed)
+│   ├── synthetic/                Full-period synthetic dataset (committed); reference/ gitignored
 │   ├── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored except
 │   │                             raw/manifest.json; fetched with an ACN-Data token)
 │   └── reference/                Frozen drift window; manifest tracked, snapshot gitignored
@@ -570,7 +642,7 @@ ev-charge-mlops/
 ├── Dockerfile, docker-compose.yml  Image and local MLflow/API/monitoring stack
 ├── STACK.md                      Tool choices against named alternatives, licences
 ├── DATA_LICENCE.md               Dataset terms, reproduction, history disclosure
-├── tests/                        108 tests (container smoke test is opt-in)
+├── tests/                        127 tests (container smoke test is opt-in)
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -659,6 +731,7 @@ limitations.
 | Normalisation, local-time monthly partitioning | Done |
 | Data contract (16 checks) + quarantine | Done |
 | Synthetic fixture for credential-free execution | Done |
+| Full-period synthetic dataset for credential-free drift evaluation | Done; reproduces the March/April volume collapse, 0/8 false alarms, H2/H3 and the unmet recovery target; first synthetic PSI alert is May 2020 |
 | Configuration layer | Done |
 | Shared feature module with the 1,000-session API parity audit and leakage tests | Done |
 | Baseline models and temporal evaluation | Done |
@@ -671,9 +744,9 @@ limitations.
 | Model artefacts and model card | Done |
 | Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 108 collected, including the opt-in live container smoke test |
+| Test suite | Done — 127 collected, including the opt-in live container smoke test |
 | GitHub Actions CI — Ruff, tests, contract, registry promotion gate, Docker build | Done; runs on every push and pull request |
-| Prefect training and monthly monitoring flows, drift scoring and guarded retraining | Done; requires local Prefect server and licensed raw data |
+| Prefect training and monthly monitoring flows, drift scoring and guarded retraining | Done; requires a local Prefect server for the schedule; runs on licensed or synthetic data |
 | Evidently PSI/KS/JS, Prometheus export, Grafana dashboard and alert rules | Done; target PSI alert validated on April 2020 |
 | Drift false-alarm, sensitivity and post-shift recovery evaluation | Done; 0/8 false alarms, +30% first tested PSI crossing; recovery target not met |
 | Phase 7 governance | Done; isolated registry-alias and prior-image rollback drill passed; ownership and direct-tool license inventory documented |

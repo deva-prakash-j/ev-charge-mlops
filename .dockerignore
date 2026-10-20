@@ -17,6 +17,7 @@ data/raw
 data/interim
 data/quarantine
 data/reference
+data/synthetic
 models
 artifacts
 notebooks

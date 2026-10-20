@@ -32,7 +32,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import SOURCES, ConfigError, Settings, get_settings, load_config
 from evcharge.features.build import build_xy, fit as fit_features
 from evcharge.models.evaluate import evaluate_slices, format_metrics
 from evcharge.validation.contract import apply_quarantine
@@ -161,6 +161,14 @@ def persist_best_model(
             "The drift and retraining results in "
             "[`docs/drift_evaluation.md`](../../docs/drift_evaluation.md) use the "
             "licensed raw-energy path and are not results for this synthetic model."
+        )
+    elif source == "synthetic":
+        evaluation_scope = (
+            "Drift and retraining checks for this model come from "
+            "`scripts/evaluate_drift.py --source synthetic` and "
+            "`scripts/evaluate_retraining_recovery.py --source synthetic`. They "
+            "demonstrate the pipeline on synthetic data and are not the licensed "
+            "results in [`docs/drift_evaluation.md`](../../docs/drift_evaluation.md)."
         )
     else:
         evaluation_scope = (
@@ -430,7 +438,7 @@ def run(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Train baseline models.")
-    parser.add_argument("--source", choices=("sample", "raw"), default="sample")
+    parser.add_argument("--source", choices=SOURCES, default="sample")
     parser.add_argument(
         "--target",
         choices=("energy", "dwell"),

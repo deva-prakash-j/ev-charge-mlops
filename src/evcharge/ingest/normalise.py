@@ -14,6 +14,7 @@ Usage:  python -m evcharge.ingest.normalise
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import logging
 import shutil
@@ -24,11 +25,9 @@ from uuid import uuid4
 
 import pandas as pd
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import SOURCES, ConfigError, Settings, get_settings, load_config
 
 logger = logging.getLogger(__name__)
-
-SOURCES = ("sample", "raw")
 
 # Columns the feed types inconsistently; coerced so Parquet gets a stable schema.
 IDENTIFIER_COLUMNS = ("siteID", "clusterID", "stationID", "spaceID", "userID")
@@ -59,7 +58,8 @@ def earliest_user_input(raw: Any) -> dict[str, Any]:
 
 def flatten_sessions(path: Path) -> pd.DataFrame:
     records: list[dict[str, Any]] = []
-    with path.open(encoding="utf-8") as fh:
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", encoding="utf-8") as fh:
         for line in fh:
             session = json.loads(line)
             flat = {
@@ -179,20 +179,25 @@ normalise_site_id = normalise_identifier
 
 
 def resolve_source(settings: Settings, source: str) -> tuple[Path, list[Path]]:
-    directory = settings.sample_dir if source == "sample" else settings.raw_dir
-    return directory, sorted(directory.glob("sessions*.jsonl"))
+    directory = settings.source_dir(source)
+    files = [*directory.glob("sessions*.jsonl"), *directory.glob("sessions*.jsonl.gz")]
+    return directory, sorted(files)
+
+
+SOURCE_HINTS = {
+    "sample": "python -m evcharge.fixtures.generate",
+    "synthetic": "python -m evcharge.fixtures.synthetic generate",
+    "raw": "python -m evcharge.ingest.fetch_sessions",
+}
 
 
 def run(settings: Settings, config: dict[str, Any], source: str = "sample") -> pd.DataFrame:
     fmt = config["timestamps"]["format"]
     directory, files = resolve_source(settings, source)
     if not files:
-        hint = (
-            "python -m evcharge.fixtures.generate"
-            if source == "sample"
-            else "python -m evcharge.ingest.fetch_sessions"
+        raise ConfigError(
+            f"No '{source}' extracts in {directory}. Run: {SOURCE_HINTS[source]}"
         )
-        raise ConfigError(f"No '{source}' extracts in {directory}. Run: {hint}")
 
     frames = []
     for path in files:
@@ -214,7 +219,10 @@ def main(argv: list[str] | None = None) -> int:
         "--source",
         choices=SOURCES,
         default="sample",
-        help="'sample' uses the committed synthetic fixture (no credentials needed).",
+        help=(
+            "'sample' uses the small committed fixture; 'synthetic' the committed "
+            "full-period synthetic dataset (neither needs credentials)."
+        ),
     )
     args = parser.parse_args(argv)
 

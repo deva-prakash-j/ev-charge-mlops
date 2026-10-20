@@ -1,11 +1,14 @@
 import numpy as np
 import pandas as pd
+import pytest
 
+from evcharge.config import ConfigError, Settings
 from evcharge.features.build import FeatureSpec
 from evcharge.monitoring.drift import (
     PSI_ALERT_THRESHOLD,
     _prediction_frame,
     _score_metrics,
+    load_reference,
     push_drift_metrics,
     score_new_months,
 )
@@ -151,7 +154,11 @@ def test_pushgateway_exports_metric_values_and_detect_state(monkeypatch):
 def test_score_new_months_includes_latest_for_alert_state(monkeypatch):
     scored = []
     pushed = []
-    monkeypatch.setattr("evcharge.monitoring.drift.load_reference", lambda _s: "ref")
+    references = []
+    monkeypatch.setattr(
+        "evcharge.monitoring.drift.load_reference",
+        lambda _s, source: references.append(source) or "ref",
+    )
     monkeypatch.setattr(
         "evcharge.monitoring.drift.load_production_model",
         lambda _settings, _source: ("model", "spec", "name", "1"),
@@ -176,3 +183,32 @@ def test_score_new_months_includes_latest_for_alert_state(monkeypatch):
     assert scored == ["2020-03", "2021-09"]
     assert reports == [{"batch_month": "2020-03"}, {"batch_month": "2021-09"}]
     assert pushed == [(reports, "raw")]
+    assert references == ["raw"]
+
+
+def test_missing_synthetic_reference_explains_how_to_build_it(tmp_path):
+    with pytest.raises(ConfigError, match="--source synthetic"):
+        load_reference(Settings(data_dir=tmp_path), "synthetic")
+
+
+def test_small_batch_with_many_station_codes_is_scored_as_categorical():
+    """A 39-session month made Evidently infer station codes as text, where PSI fails."""
+    rng = np.random.default_rng(1)
+    reference = pd.DataFrame(
+        {
+            "stationID_code": [f"0001-S{i % 52:03d}" for i in range(2000)],
+            "kWhDelivered": rng.gamma(2.0, 5.0, 2000),
+        }
+    )
+    current = pd.DataFrame(
+        {
+            "stationID_code": [f"0001-S{i:03d}" for i in range(39)],
+            "kWhDelivered": rng.gamma(2.0, 5.0, 39),
+        }
+    )
+
+    scores, _ = _score_metrics(reference, current)
+
+    station = next(score for score in scores if score["column"] == "stationID_code")
+    assert station["status"] == "scored"
+    assert station["psi"] is not None and station["ks_statistic"] is None

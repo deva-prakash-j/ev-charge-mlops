@@ -11,7 +11,7 @@ from typing import Any
 
 import pandas as pd
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import DRIFT_SOURCES, ConfigError, Settings, get_settings, load_config
 from evcharge.validation.contract import apply_quarantine, load_normalised
 
 SNAPSHOT_VERSION = "v1"
@@ -119,18 +119,20 @@ def write_reference_snapshot(
 
 
 def create_reference_snapshot(settings: Settings, source: str = "raw") -> dict[str, Any]:
-    if source != "raw":
-        raise ConfigError("The versioned drift reference must be built from source 'raw'.")
-    raw_manifest = settings.raw_dir / "manifest.json"
-    if not raw_manifest.is_file():
-        raise ConfigError(f"Raw extract manifest is missing: {raw_manifest}")
+    if source not in DRIFT_SOURCES:
+        raise ConfigError(
+            f"The versioned drift reference must be built from one of {DRIFT_SOURCES}."
+        )
+    source_manifest = settings.source_dir(source) / "manifest.json"
+    if not source_manifest.is_file():
+        raise ConfigError(f"{source} extract manifest is missing: {source_manifest}")
     contract = load_config("contract")
     data = load_config("data")
-    source_manifest_sha256 = _sha256(raw_manifest)
+    source_manifest_sha256 = _sha256(source_manifest)
     frame = build_reference_frame(load_normalised(settings, source), data, contract)
     return write_reference_snapshot(
         frame,
-        settings.data_dir / "reference",
+        settings.reference_dir(source),
         source_manifest_sha256,
         data["split"]["reference_window_start"],
         data["split"]["reference_window_end_exclusive"],
@@ -139,10 +141,16 @@ def create_reference_snapshot(settings: Settings, source: str = "raw") -> dict[s
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Freeze the drift reference snapshot.")
-    parser.add_argument("--source", choices=("raw",), default="raw")
+    parser.add_argument(
+        "--source",
+        choices=DRIFT_SOURCES,
+        default="raw",
+        help="'synthetic' builds a credential-free reference from the committed dataset.",
+    )
     args = parser.parse_args(argv)
     try:
-        manifest = create_reference_snapshot(get_settings(), args.source)
+        settings = get_settings()
+        manifest = create_reference_snapshot(settings, args.source)
     except (ConfigError, OSError, ValueError) as exc:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 2
@@ -152,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{manifest['window']['end_exclusive']} exclusive)"
     )
     print(f"[ok]   snapshot SHA-256: {manifest['sha256']}")
-    print("[ok]   manifest -> data/reference/manifest.json")
+    print(f"[ok]   manifest -> {settings.reference_dir(args.source) / 'manifest.json'}")
     return 0
 
 

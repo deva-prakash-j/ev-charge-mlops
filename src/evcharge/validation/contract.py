@@ -26,7 +26,7 @@ from typing import Any
 
 import pandas as pd
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import SOURCES, ConfigError, Settings, get_settings, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -256,7 +256,7 @@ def validate(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate the session data contract.")
-    parser.add_argument("--source", choices=("sample", "raw"), default="sample")
+    parser.add_argument("--source", choices=SOURCES, default="sample")
     args = parser.parse_args(argv)
 
     warnings.filterwarnings("ignore")

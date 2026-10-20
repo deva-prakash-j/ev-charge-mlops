@@ -1,4 +1,4 @@
-"""Reproduce real-batch drift, leave-one-month-out, and injected-shift checks."""
+"""Reproduce monthly-batch drift, leave-one-month-out, and injected-shift checks."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from evcharge.config import get_settings
+from evcharge.config import DRIFT_SOURCES, get_settings
 from evcharge.monitoring.drift import (
     PSI_ALERT_THRESHOLD,
     _prediction_frame,
@@ -26,16 +26,16 @@ def _target_score(
     return next(score for score in scores if score["column"] == "kWhDelivered")
 
 
-def evaluate(months: list[str]) -> dict[str, Any]:
+def evaluate(months: list[str], source: str = "raw") -> dict[str, Any]:
     settings = get_settings()
-    reference = load_reference(settings)
+    reference = load_reference(settings, source)
     model, feature_spec, model_name, model_version = load_production_model(
-        settings, "raw"
+        settings, source
     )
     reference_scoring = _prediction_frame(
         reference, model, feature_spec, reference=True
     )
-    partitions = _monthly_partitions(settings, "raw")
+    partitions = _monthly_partitions(settings, source)
     reference_months = pd.to_datetime(reference["connectionTimeLocal"]).dt.strftime(
         "%Y-%m"
     )
@@ -51,7 +51,7 @@ def evaluate(months: list[str]) -> dict[str, Any]:
     for month in months:
         files = partitions.get(month)
         if not files:
-            raise ValueError(f"No raw monthly partitions are available for {month}.")
+            raise ValueError(f"No {source} monthly partitions are available for {month}.")
         batch = pd.concat(
             [pd.read_parquet(path) for path in files], ignore_index=True
         )
@@ -111,7 +111,7 @@ def evaluate(months: list[str]) -> dict[str, Any]:
         month for month in partitions if "2021-05" <= month <= "2021-09"
     ]
     if not hypothesis_months:
-        raise ValueError("Raw monthly batches for the H2/H3 2021 window are missing.")
+        raise ValueError(f"{source} monthly batches for the H2/H3 2021 window are missing.")
     later = pd.concat(
         [
             pd.read_parquet(path)
@@ -165,7 +165,7 @@ def evaluate(months: list[str]) -> dict[str, Any]:
     later_gap_median = float(later_gaps.median())
 
     manifest = json.loads(
-        (settings.data_dir / "reference" / "manifest.json").read_text(
+        (settings.reference_dir(source) / "manifest.json").read_text(
             encoding="utf-8"
         )
     )
@@ -173,7 +173,7 @@ def evaluate(months: list[str]) -> dict[str, Any]:
         item["target"]["psi_alert"] for item in stable_months.values()
     )
     return {
-        "source": "raw",
+        "source": source,
         "model_name": model_name,
         "model_version": model_version,
         "reference_sha256": manifest["sha256"],
@@ -203,15 +203,22 @@ def evaluate(months: list[str]) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--source",
+        choices=DRIFT_SOURCES,
+        default="raw",
+        help="'synthetic' runs every check on the committed synthetic dataset.",
+    )
+    parser.add_argument(
         "--months",
         nargs="+",
         default=["2020-03", "2020-04"],
-        help="Raw monthly batches to score against the frozen reference.",
+        help="Monthly batches to score against the frozen reference.",
     )
     args = parser.parse_args()
 
-    report = evaluate(args.months)
-    output = get_settings().artifacts_dir / "drift" / "detector_evaluation.json"
+    report = evaluate(args.months, args.source)
+    suffix = "" if args.source == "raw" else f"_{args.source}"
+    output = get_settings().artifacts_dir / "drift" / f"detector_evaluation{suffix}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8"

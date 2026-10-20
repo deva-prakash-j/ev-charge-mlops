@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from evidently import Report
+from evidently import DataDefinition, Dataset, Report
 from evidently.metrics import ValueDrift
 from scipy.stats import ks_2samp
 
@@ -59,16 +59,18 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_reference(settings: Settings) -> pd.DataFrame:
+def load_reference(settings: Settings, source: str = "raw") -> pd.DataFrame:
     """Load the frozen snapshot only after verifying its data-free manifest."""
-    reference_dir = settings.data_dir / "reference"
+    reference_dir = settings.reference_dir(source)
     manifest_path = reference_dir / "manifest.json"
     if not manifest_path.is_file():
-        raise ConfigError(
-            f"Drift reference manifest is missing: {manifest_path}. "
+        hint = (
             "Fetch the licensed extract with an ACN-Data token and regenerate the "
             "reference."
+            if source == "raw"
+            else f"Run: python -m evcharge.validation.reference --source {source}"
         )
+        raise ConfigError(f"Drift reference manifest is missing: {manifest_path}. {hint}")
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -226,8 +228,16 @@ def _score_metrics(
     if not metrics:
         raise ValueError("No comparable columns have at least two non-missing values.")
 
+    # Declare column types: Evidently infers high-cardinality string columns in
+    # small batches (e.g. station codes in a 39-session month) as text, where
+    # PSI is undefined.
+    definition = DataDefinition(
+        numerical_columns=sorted(continuous_columns),
+        categorical_columns=sorted(set(reference.columns) - continuous_columns),
+    )
     snapshot = Report(metrics=metrics).run(
-        current_data=current, reference_data=reference
+        current_data=Dataset.from_pandas(current, data_definition=definition),
+        reference_data=Dataset.from_pandas(reference, data_definition=definition),
     )
     values = {
         (item["config"]["column"], item["config"]["method"]): float(item["value"])
@@ -483,7 +493,7 @@ def score_new_months(
         return []
     from evcharge.orchestration.flows import _monthly_partitions
 
-    reference = load_reference(settings)
+    reference = load_reference(settings, source)
     model, spec, model_name, model_version = load_production_model(settings, source)
     months_to_score = set(months)
     months_to_score.add(max(_monthly_partitions(settings, source)))

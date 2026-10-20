@@ -16,10 +16,17 @@ CONFIG_DIR = PROJECT_ROOT / "configs"
 DEFAULT_API_URL = "https://ev.caltech.edu/api/v1/"
 SITES: tuple[str, ...] = ("caltech", "jpl", "office001")
 
+# sample: small committed fixture (CI fast path). synthetic: committed full-period
+# synthetic dataset. raw: the licensed extract, fetched with a token.
+SOURCES: tuple[str, ...] = ("sample", "synthetic", "raw")
+# Sources spanning the frozen reference window and later batches.
+DRIFT_SOURCES: tuple[str, ...] = ("synthetic", "raw")
+
 MISSING_TOKEN_HELP = (
     "ACN_API_TOKEN is not set. It is only needed to download the licensed\n"
-    "dataset; the sample path runs without it:\n"
-    "    python -m evcharge.pipeline --source sample\n\n"
+    "dataset; the committed synthetic paths run without it:\n"
+    "    python -m evcharge.pipeline --source sample\n"
+    "    python -m evcharge.pipeline --source synthetic   (full period, drift checks)\n\n"
     "To use the real data:\n"
     "  1. Copy-Item .env.example .env\n"
     "  2. Paste your token from https://ev.caltech.edu/dataset into .env\n"
@@ -82,6 +89,22 @@ class Settings:
     @property
     def models_dir(self) -> Path:
         return PROJECT_ROOT / "models"
+
+    def source_dir(self, source: str) -> Path:
+        """Directory holding a source's session extracts and manifest."""
+        if source not in SOURCES:
+            raise ConfigError(f"Unknown source {source!r}; expected one of {SOURCES}.")
+        return self.data_dir / source
+
+    def reference_dir(self, source: str) -> Path:
+        """Frozen drift reference location; the licensed one keeps its original path."""
+        if source not in DRIFT_SOURCES:
+            raise ConfigError(
+                f"Source {source!r} has no drift reference; expected one of {DRIFT_SOURCES}."
+            )
+        if source == "raw":
+            return self.data_dir / "reference"
+        return self.source_dir(source) / "reference"
 
 
 def load_config(name: str = "data") -> dict[str, Any]:

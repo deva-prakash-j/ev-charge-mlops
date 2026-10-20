@@ -19,7 +19,7 @@ from mlflow import MlflowClient
 from mlflow.exceptions import MlflowException
 from sklearn.dummy import DummyRegressor
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import SOURCES, ConfigError, Settings, get_settings, load_config
 from evcharge.features.build import FeatureSpec, build_xy, fit as fit_features, transform
 from evcharge.models.evaluate import regression_metrics
 
@@ -52,7 +52,7 @@ def resolve_tracking_uri(
 
 
 def registered_model_name(source: str, target: str, prefix: str = "evcharge") -> str:
-    if source not in {"sample", "raw"} or target not in {"energy", "dwell"}:
+    if source not in SOURCES or target not in {"energy", "dwell"}:
         raise ConfigError(
             f"Unsupported registry source/target pair: {source!r}/{target!r}."
         )
@@ -294,8 +294,10 @@ def prove_degraded_candidate(
     from evcharge.models import train
     from evcharge.validation.contract import apply_quarantine
 
-    if source not in {"sample", "raw"} or target not in {"energy", "dwell"}:
-        raise ConfigError("Proof requires source sample/raw and target energy/dwell.")
+    if source not in SOURCES or target not in {"energy", "dwell"}:
+        raise ConfigError(
+            f"Proof requires a source in {SOURCES} and target energy/dwell."
+        )
     report_path = settings.artifacts_dir / (
         f"training_{source}.json"
         if target == "energy"
@@ -442,7 +444,7 @@ def prove_degraded_candidate(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Prove the model promotion gate.")
-    parser.add_argument("--source", choices=("sample", "raw"), default="raw")
+    parser.add_argument("--source", choices=SOURCES, default="raw")
     parser.add_argument("--target", choices=("energy", "dwell"), default="energy")
     parser.add_argument(
         "--prove-degraded-candidate",

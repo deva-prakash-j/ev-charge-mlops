@@ -28,7 +28,7 @@ from prometheus_client import (
 )
 from pydantic import BaseModel, ConfigDict
 
-from evcharge.config import PROJECT_ROOT, get_settings, load_config
+from evcharge.config import PROJECT_ROOT, SOURCES, get_settings, load_config
 from evcharge.features.build import FeatureSpec, transform
 from evcharge.ingest.normalise import normalise_identifier
 from evcharge.models.registry import resolve_tracking_uri
@@ -79,8 +79,8 @@ def create_app(
     registry_model_name: str | None = None,
     prediction_log_path: Path | None = None,
 ) -> FastAPI:
-    if source not in {"sample", "raw"}:
-        raise ValueError("source must be 'sample' or 'raw'")
+    if source not in SOURCES:
+        raise ValueError(f"source must be one of {SOURCES}")
 
     if registry_model_name == "":
         registry_model_name = None

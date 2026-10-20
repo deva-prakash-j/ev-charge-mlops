@@ -7,11 +7,14 @@
 
 # Data — real ACN-Data records stay out of the repository, which is the whole
 # submission (see DATA_LICENCE.md); evaluators fetch them with their own free token.
-# Ignore data/ contents rather than the directory, so the synthetic fixture in
-# data/sample/ can be re-included (git cannot un-ignore inside an ignored dir).
+# Ignore data/ contents rather than the directory, so the synthetic data in
+# data/sample/ and data/synthetic/ can be re-included (git cannot un-ignore
+# inside an ignored dir).
 # Data manifests hold counts and hashes only, so they are published.
 data/*
 !data/sample/
+!data/synthetic/
+data/synthetic/reference/
 !data/raw/
 data/raw/*
 !data/raw/manifest.json
@@ -30,6 +33,8 @@ great_expectations/uncommitted/
 models/raw/
 models/raw_dwell/
 models/sample_dwell/
+models/synthetic/
+models/synthetic_dwell/
 !models/sample/model.joblib
 
 # Generated run outputs. pii_audit.json is kept deliberately: it is the evidence

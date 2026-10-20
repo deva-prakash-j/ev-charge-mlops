@@ -24,8 +24,16 @@ upload or ZIP accompanies it.
 
 | Copy | Real ACN-Data records |
 |---|---|
-| Public GitHub repository (the submission) | **Not included.** Only data-free manifests (`data/raw/manifest.json` and `data/reference/manifest.json`: counts and SHA-256 hashes), retrieval code, a synthetic fixture, and aggregate metrics, figures and reports are published. |
+| Public GitHub repository (the submission) | **Not included.** Only data-free manifests (`data/raw/manifest.json` and `data/reference/manifest.json`: counts and SHA-256 hashes), retrieval code, two synthetic datasets, and aggregate metrics, figures and reports are published. |
 | Local working copy of the author | The extract retrieved through the API, kept outside version control (`data/raw/*.jsonl` and `data/reference/*.parquet` are gitignored). |
+
+The two synthetic datasets (`data/sample/` and `data/synthetic/`) contain no ACN-Data
+record. They are drawn with a fixed seed from aggregate statistics committed in
+`configs/sample_profile.yaml` and `configs/synthetic_profile.yaml`: monthly session and
+request counts, interior quantiles, and regression and copula parameters. Every fitted
+statistic in the full-period profile covers at least 50 sessions, and no minimum, maximum
+or identifier is stored. Synthetic session IDs, station IDs and timestamps are generated,
+and `userID` is never produced.
 
 The repository stays data-free because publishing the records there would let anyone
 download them without registering, bypassing the publisher's usage tracking and the
@@ -42,8 +50,11 @@ permission from the dataset maintainer.
    metrics with `data/raw/manifest.json`, `benchmarks/licensed_baseline.json` and
    `benchmarks/dwell_baseline.json`.
 
-Without a token, the synthetic fixture exercises every stage of the same code path; its
-metrics are not comparable with the licensed benchmarks.
+Without a token, the small synthetic fixture (`--source sample`) exercises the training,
+registry and serving stages, and the full-period synthetic dataset (`--source synthetic`)
+also exercises the drift reference, monthly monitoring, detector evaluation and recovery
+experiment. Their metrics demonstrate the pipeline and are not comparable with the
+licensed benchmarks.
 
 ## Disclosure: identifiers in early git history
 

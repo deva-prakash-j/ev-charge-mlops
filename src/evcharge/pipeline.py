@@ -18,7 +18,7 @@ import warnings
 from datetime import datetime, timezone
 from typing import Any, Callable
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import SOURCES, ConfigError, Settings, get_settings, load_config
 
 logger = logging.getLogger(__name__)
 
@@ -183,9 +183,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the end-to-end pipeline.")
     parser.add_argument(
         "--source",
-        choices=("sample", "raw"),
+        choices=SOURCES,
         default="sample",
-        help="'sample' uses the committed fixture and needs no credentials.",
+        help=(
+            "'sample' (small fixture) and 'synthetic' (full-period synthetic data) "
+            "are committed and need no credentials."
+        ),
     )
     parser.add_argument(
         "--fetch",

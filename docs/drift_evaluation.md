@@ -113,3 +113,44 @@ proposal's 10% recovery target remains unmet. The detector, false-alarm study, s
 study, monitoring stack, and guarded retraining path are implemented, but these results
 do **not** demonstrate model recovery. Do not promote the recovery criterion to a pass;
 further model or feature investigation is required.
+
+## Credential-free replication on synthetic data
+
+Every command above also runs on the committed full-period synthetic dataset
+(`data/synthetic/`, 66,745 sessions drawn from the aggregate profile in
+`configs/synthetic_profile.yaml`; see the README for how it is built):
+
+```powershell
+.\.venv\Scripts\python.exe -m evcharge.pipeline --source synthetic
+.\.venv\Scripts\python.exe -m evcharge.validation.reference --source synthetic
+.\.venv\Scripts\python.exe scripts\evaluate_drift.py --source synthetic
+.\.venv\Scripts\python.exe scripts\evaluate_retraining_recovery.py --source synthetic
+.\.venv\Scripts\python.exe -m evcharge.orchestration monitor --source synthetic
+```
+
+Outputs go to `artifacts/drift/detector_evaluation_synthetic.json`,
+`artifacts/drift/retraining_recovery_synthetic.json` and
+`artifacts/drift/synthetic_<month>.*`. They demonstrate the pipeline and are not evidence
+for the licensed results above. With the committed seed:
+
+| Check | Licensed | Synthetic |
+|---|---|---|
+| March / April / May 2020 delivered-energy PSI | 0.013 / **0.231** / 0.324 | 0.008 / 0.165 / **0.413** |
+| Leave-one-month-out false alarms (max PSI) | 0 / 8 (0.022) | 0 / 8 (0.036) |
+| First controlled-shift alert | +30% | +50% |
+| H2 p90 request change, sites 0002 / 0019 | +57.5% / +185.6% | +65.6% / +170.4% |
+| H3 median gap change (PSI) | 3.775 kWh (0.261) | 4.861 kWh (0.316) |
+| Recovery: pre-shift MAE, ceiling, best held-out MAE | 4.399, 4.839, 5.712 — not met | 4.709, 5.180, 5.695 — not met |
+
+Volumes are copied from the profile, so the H1 site-volume falls match by construction.
+The synthetic April batch has the same 240 sessions, and its PSI sits near the threshold:
+across eight generator seeds it ranged from 0.13 to 0.23 and alerted twice, while March
+never alerted and May always did. On the committed seed the detector therefore alerts one
+month later than on the licensed data.
+
+A full synthetic run of the Prefect monitor scored all 42 monthly batches, exported them
+to Pushgateway with `source="synthetic"`, and started one gated retraining run for the
+latest month (2021-09, where input features drifted). It also exposed a scoring defect
+that affected the licensed path too: in the 39-session 2020-08 batch, Evidently inferred
+station codes as text and PSI raised an error. Column types are now declared explicitly.
+The licensed April 2020 score is unchanged (PSI 0.2311, JS 0.1637).

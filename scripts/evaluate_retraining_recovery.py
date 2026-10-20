@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 
 import numpy as np
 
-from evcharge.config import PROJECT_ROOT, get_settings, load_config
+from evcharge.config import DRIFT_SOURCES, PROJECT_ROOT, get_settings, load_config
 from evcharge.features.build import build_xy, fit as fit_features
 from evcharge.models.evaluate import regression_metrics
 from evcharge.models.train import build_models, load_sessions, temporal_split
@@ -76,19 +77,46 @@ def _evaluate_window(frame, split_config, configs, target):
     }
 
 
+def _pre_shift_baseline_mae(settings, source: str) -> tuple[float, str]:
+    """Licensed runs use the published benchmark; synthetic runs their own training report."""
+    if source == "raw":
+        path = PROJECT_ROOT / "benchmarks" / "licensed_baseline.json"
+        baseline = json.loads(path.read_text(encoding="utf-8"))
+        return (
+            baseline["metrics"][PRE_SHIFT_BASELINE_MAE]["validation"]["mae"],
+            "benchmarks/licensed_baseline.json",
+        )
+    path = settings.artifacts_dir / f"training_{source}.json"
+    if not path.is_file():
+        raise SystemExit(
+            f"[FAIL] {path} is missing. Run: python -m evcharge.pipeline --source {source}"
+        )
+    report = json.loads(path.read_text(encoding="utf-8"))
+    mae = report["results"][PRE_SHIFT_BASELINE_MAE]["validation"]["overall"]["mae"]
+    return mae, f"artifacts/{path.name}"
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--source",
+        choices=DRIFT_SOURCES,
+        default="raw",
+        help="'synthetic' runs the experiment on the committed synthetic dataset.",
+    )
+    args = parser.parse_args()
+    source = args.source
+
     settings = get_settings()
     configs = {
         name: load_config(name) for name in ("data", "features", "model", "contract")
     }
     target = configs["features"]["target"]
-    frame = load_sessions(settings, "raw")
+    frame = load_sessions(settings, source)
     frame, _ = apply_quarantine(frame, configs["contract"]["quarantine_rules"])
     frame = frame[frame[target].notna()].reset_index(drop=True)
 
-    baseline_path = PROJECT_ROOT / "benchmarks" / "licensed_baseline.json"
-    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
-    baseline_mae = baseline["metrics"][PRE_SHIFT_BASELINE_MAE]["validation"]["mae"]
+    baseline_mae, baseline_source = _pre_shift_baseline_mae(settings, source)
     max_recovered_mae = baseline_mae * (1 + RECOVERY_TOLERANCE)
     experiments = {
         name: _evaluate_window(frame, split, configs, target)
@@ -101,13 +129,15 @@ def main() -> int:
         )
 
     report = {
-        "source": "raw",
+        "source": source,
         "target": target,
         "pre_shift_baseline_validation_mae": baseline_mae,
+        "pre_shift_baseline_from": baseline_source,
         "recovery_tolerance_fraction": RECOVERY_TOLERANCE,
         "experiments": experiments,
     }
-    output = settings.artifacts_dir / "drift" / "retraining_recovery.json"
+    suffix = "" if source == "raw" else f"_{source}"
+    output = settings.artifacts_dir / "drift" / f"retraining_recovery{suffix}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
         json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8"

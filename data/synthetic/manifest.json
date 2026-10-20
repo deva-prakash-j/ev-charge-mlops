@@ -1,0 +1,34 @@
+{
+  "source": "SYNTHETIC - generated from aggregate statistics, not real records",
+  "generator": "evcharge.fixtures.synthetic",
+  "profile": "configs/synthetic_profile.yaml",
+  "seed": 20261020,
+  "window": "2018-04..2021-09",
+  "regimes": {
+    "pre_shift": [
+      "2018-04",
+      "2020-02"
+    ],
+    "shutdown": [
+      "2020-03",
+      "2020-12"
+    ],
+    "reopening": [
+      "2021-01",
+      "2021-09"
+    ]
+  },
+  "file": "sessions_synthetic.jsonl.gz",
+  "sessions": 66745,
+  "sessions_by_site": {
+    "0001": 33638,
+    "0002": 31424,
+    "0019": 1683
+  },
+  "first_month_utc": "2018-04",
+  "last_month_utc": "2021-10",
+  "uncompressed_sha256": "0922283037479ef5eb3a7b8ebc2a9c5deb10196cffe9bf31b12e8086344ee01c",
+  "contains_pii": false,
+  "contains_real_records": false,
+  "note": "Every session is drawn from aggregate parameters with a fixed seed. Results computed on this data demonstrate the pipeline and are not comparable with the licensed benchmarks."
+}

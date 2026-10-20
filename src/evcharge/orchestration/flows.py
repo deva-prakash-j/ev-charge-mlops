@@ -17,10 +17,16 @@ from prefect import flow, task
 from prefect.client.schemas.schedules import CronSchedule
 from prefect.settings import PREFECT_API_URL
 
-from evcharge.config import ConfigError, Settings, get_settings, load_config
+from evcharge.config import (
+    DRIFT_SOURCES,
+    SOURCES,
+    ConfigError,
+    Settings,
+    get_settings,
+    load_config,
+)
 
 logger = logging.getLogger(__name__)
-SOURCES = ("raw", "sample")
 MONTHLY_CRON = "0 2 1 * *"
 STATE_VERSION = 2
 
@@ -229,16 +235,20 @@ def retraining_split_for_month(month: str) -> dict[str, str]:
 def monthly_monitoring_flow(
     source: str = "raw", fetch: bool = True
 ) -> dict[str, Any]:
-    """Fetch, validate, score drift, export metrics, and retrain on the latest alert."""
+    """Fetch, validate, score drift, export metrics, and retrain on the latest alert.
+
+    Only the raw source is downloaded. Drift is scored for sources that have a
+    frozen reference (raw and the full-period synthetic dataset).
+    """
     if source not in SOURCES:
         raise ValueError(f"Unsupported source {source!r}; expected one of {SOURCES}.")
-    if fetch:
+    if fetch and source == "raw":
         fetch_raw_data()
     normalised = normalise_source(source)
     batches = validate_monthly_batches(source)
     drift_reports: list[dict[str, Any]] = []
     retraining: dict[str, Any] | None = None
-    if source == "raw":
+    if source in DRIFT_SOURCES:
         settings = get_settings()
         state_path = (
             settings.artifacts_dir / "monitoring" / f"monthly_{source}.json"

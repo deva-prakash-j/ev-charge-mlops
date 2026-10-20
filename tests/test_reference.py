@@ -4,10 +4,11 @@ import json
 import pandas as pd
 import pytest
 
-from evcharge.config import get_settings
+from evcharge.config import ConfigError, Settings, get_settings
 from evcharge.validation.reference import (
     SNAPSHOT_COLUMNS,
     build_reference_frame,
+    create_reference_snapshot,
     write_reference_snapshot,
 )
 
@@ -80,6 +81,35 @@ def test_reference_manifest_checksums_file_and_counts_rows(tmp_path):
     assert manifest["rows_by_month"] == {"2019-07": 1}
     assert manifest["rows_by_site"] == {"0001": 1}
     assert json.loads((tmp_path / "manifest.json").read_text()) == manifest
+
+
+def test_synthetic_reference_is_frozen_beside_the_synthetic_source(tmp_path):
+    settings = Settings(data_dir=tmp_path, artifacts_dir=tmp_path / "artifacts")
+    source_manifest = settings.source_dir("synthetic") / "manifest.json"
+    source_manifest.parent.mkdir(parents=True)
+    source_manifest.write_text('{"sessions": 3}\n', encoding="utf-8")
+    partition = (
+        settings.interim_dir / "synthetic" / "sessions" / "site=0001" / "month=2019-07"
+    )
+    partition.mkdir(parents=True)
+    _source_frame().to_parquet(partition / "sessions.parquet", index=False)
+
+    manifest = create_reference_snapshot(settings, "synthetic")
+
+    reference_dir = tmp_path / "synthetic" / "reference"
+    assert json.loads((reference_dir / "manifest.json").read_text()) == manifest
+    assert (reference_dir / manifest["file"]).is_file()
+    assert manifest["rows"] == 1
+    assert (
+        manifest["source_extract_manifest_sha256"]
+        == hashlib.sha256(source_manifest.read_bytes()).hexdigest()
+    )
+    assert not (tmp_path / "reference").exists()
+
+
+def test_sample_source_cannot_build_a_drift_reference(tmp_path):
+    with pytest.raises(ConfigError, match="drift reference"):
+        create_reference_snapshot(Settings(data_dir=tmp_path), "sample")
 
 
 def test_local_frozen_snapshot_matches_its_manifest():

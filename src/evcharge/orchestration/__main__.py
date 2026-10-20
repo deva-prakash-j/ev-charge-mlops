@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from evcharge.config import SOURCES
 from evcharge.orchestration.flows import (
     monthly_monitoring_flow,
     serve_monthly_monitor,
@@ -18,13 +19,17 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("serve", help="Register and serve the monthly raw-data flow.")
     train_parser = subparsers.add_parser("train", help="Run the training flow once.")
-    train_parser.add_argument("--source", choices=("raw", "sample"), default="raw")
+    train_parser.add_argument("--source", choices=SOURCES, default="raw")
     train_parser.add_argument("--fetch", action="store_true")
     monitor_parser = subparsers.add_parser(
         "monitor", help="Run the monthly batch monitor once."
     )
-    monitor_parser.add_argument("--source", choices=("raw", "sample"), default="raw")
-    monitor_parser.add_argument("--no-fetch", action="store_true")
+    monitor_parser.add_argument("--source", choices=SOURCES, default="raw")
+    monitor_parser.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help="Skip the ACN-Data download (only the raw source is ever fetched).",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "serve":
