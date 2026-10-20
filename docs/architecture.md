@@ -62,7 +62,9 @@ flowchart TB
   N -->|threshold breach| O[Retraining trigger]
   O --> A
 
-  P[GitHub Actions] -.->|lint · tests · contract · eval gate| ORCH
+  P[GitHub Actions] --> R[Lint · tests · sample contract · evaluation gate · Docker build]
+  R --> S[(Run-local MLflow registry)]
+  S --> T[Promotion and degraded-candidate evidence]
   G -.->|demote previous version| Q[Rollback runbook]
 ```
 

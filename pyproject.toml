@@ -14,9 +14,19 @@ serve = [
     "uvicorn>=0.34,<1",
     "prometheus-client>=0.20,<1",
 ]
+dev = [
+    "ruff>=0.14,<1",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

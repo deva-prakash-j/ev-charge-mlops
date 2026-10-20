@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{manifest['window']['end_exclusive']} exclusive)"
     )
     print(f"[ok]   snapshot SHA-256: {manifest['sha256']}")
-    print(f"[ok]   manifest -> data/reference/manifest.json")
+    print("[ok]   manifest -> data/reference/manifest.json")
     return 0
 
 

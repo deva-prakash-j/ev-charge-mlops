@@ -170,11 +170,18 @@ intended as a public production deployment.
 
 ---
 
+## CI/CD
+
+GitHub Actions runs Ruff, the tests, sample-data validation and evaluation, and a Docker
+build on pushes and pull requests. Its local MLflow registry promotes eligible sample
+models, then verifies a deliberately degraded candidate is blocked without changing the
+Production aliases. The workflow uploads the run store and decision reports for 14 days;
+it does not publish models to a persistent registry or deploy the API.
+
 ## Planned (V2)
 
 | Tool | Purpose | Alternative considered |
 |---|---|---|
-| GitHub Actions | CI and quality gates | Jenkins — needs a server to maintain |
 | Prefect | Orchestration | Airflow — heavier scheduler for a four-week project |
 | Evidently | Drift reports and metrics | Hand-rolled PSI — no Data Docs, more to verify |
 | Prometheus + Grafana | Metric storage, dashboards and alerting for the existing `/metrics` endpoint | Logging to files — no alerting path |

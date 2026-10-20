@@ -34,7 +34,7 @@ from sklearn.preprocessing import StandardScaler
 
 from evcharge.config import ConfigError, Settings, get_settings, load_config
 from evcharge.features.build import build_xy, fit as fit_features
-from evcharge.models.evaluate import evaluate_slices, format_metrics, regression_metrics
+from evcharge.models.evaluate import evaluate_slices, format_metrics
 from evcharge.validation.contract import apply_quarantine
 
 logger = logging.getLogger(__name__)

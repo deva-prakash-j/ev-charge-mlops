@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import joblib
 import mlflow.sklearn
-import pytest
 from fastapi.testclient import TestClient
 
 from evcharge.config import PROJECT_ROOT, load_config

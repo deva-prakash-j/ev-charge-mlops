@@ -465,7 +465,7 @@ def main(argv: list[str] | None = None) -> int:
         f"[ok]   validation MAE {decision['candidate_validation_mae']:.4f}; "
         f"failed checks: {', '.join(decision['gate']['failed_checks'])}"
     )
-    print(f"[ok]   evidence -> artifacts/promotion_decisions.jsonl")
+    print("[ok]   evidence -> artifacts/promotion_decisions.jsonl")
     return 0
 
 

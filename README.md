@@ -4,7 +4,8 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-88%20passing-brightgreen)
+[![CI](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml)
+![tests](https://img.shields.io/badge/tests-89%20collected-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -232,6 +233,16 @@ candidate. The command should report that it was blocked; it never changes Produ
 ```powershell
 .\.venv\Scripts\python.exe -m evcharge.models.registry --source sample --target energy --prove-degraded-candidate
 ```
+
+### Continuous integration
+
+GitHub Actions runs Ruff, the test suite, the sample-data contract and temporal
+evaluation on every push and pull request, then builds the Docker image. The sample
+pipeline promotes eligible energy and dwell models in a run-local MLflow registry.
+CI next registers a deliberately degraded candidate and fails if it is not blocked
+or if the Production alias changes. The workflow uploads the MLflow runs, promotion
+decisions and reports as a 14-day artifact. This is a safety check, not a deployment:
+CI does not publish a model or require registry credentials.
 
 ### Model artefacts
 
@@ -479,12 +490,11 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Model artefacts and model card | Done |
 | Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 88 passed; container smoke test passes against Compose and is skipped unless `EVCHARGE_API_URL` is set |
+| Test suite | Done — 89 tests; container smoke test is opt-in |
+| GitHub Actions CI — Ruff, tests, contract, registry promotion gate, Docker build | Done; runs on every push and pull request |
 
 ## Planned enhancements — V2 (Final)
 
-- **CI/CD** — GitHub Actions running lint, tests, the data contract and an offline
-  evaluation gate that blocks promotion on MAE regression.
 - **Orchestration** — Prefect flows for `ingest → validate → train → evaluate → register`.
 - **Drift monitoring** — Evidently computing PSI, KS and Jensen-Shannon divergence
   against a frozen reference window, exported to Prometheus and visualised in Grafana.

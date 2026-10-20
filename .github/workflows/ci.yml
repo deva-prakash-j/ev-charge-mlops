@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, test, promote, and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -e ".[dev]"
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Generate credential-free sample data
+        run: python -m evcharge.ingest.normalise --source sample
+
+      - name: Run unit tests
+        run: python -m pytest -q
+
+      - name: Validate data contract and promote sample models
+        run: python -m evcharge.pipeline --source sample
+
+      - name: Prove degraded candidate is blocked
+        run: python scripts/ci_promotion_gate.py
+
+      - name: Build Docker image
+        run: docker build --tag evcharge-capstone:ci .
+
+      - name: Upload pipeline and promotion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-promotion-evidence-${{ github.run_id }}
+          path: |
+            artifacts/
+            mlruns/
+          if-no-files-found: warn
+          retention-days: 14
