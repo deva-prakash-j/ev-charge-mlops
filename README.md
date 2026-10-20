@@ -4,7 +4,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-86%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-88%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -284,6 +284,64 @@ declared request fields (`kWhRequested`, `milesRequested`, `minutesAvailable`,
 fields are rejected. The demo service binds to localhost and does not implement
 authentication, TLS termination, or production deployment hardening.
 
+### Docker Compose registry-backed API
+
+Docker Compose starts a local MLflow server and the API. On an empty registry volume, a
+one-shot bootstrap container runs the sample pipeline and registers a model before the API
+starts. Later starts reuse the persisted Production alias. The container image includes
+the synthetic sample only; it excludes licensed `data/raw/` records. First-time build and
+training may take several minutes.
+
+```powershell
+docker compose up --build -d
+docker compose ps
+Invoke-RestMethod http://127.0.0.1:8000/health
+```
+
+The API loads `evcharge-sample-energy@production` from MLflow rather than
+`models/sample/`. The MLflow UI is available at `http://127.0.0.1:5000`. Both host ports
+bind to loopback only; the local demo does not provide authentication or TLS. If port 8000
+or 5000 is already in use, choose other host ports before starting Compose, for example
+`$env:EVCHARGE_API_PORT = '8001'` or `$env:EVCHARGE_MLFLOW_PORT = '5001'`, and use those
+ports in the commands below.
+
+Use the checked-in sample request:
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/predict -Method Post `
+  -ContentType 'application/json' -InFile .\examples\predict_request.json
+Invoke-WebRequest http://127.0.0.1:8000/metrics | Select-Object -ExpandProperty Content
+```
+
+Example response from a fresh Compose registry (`predicted_kWhDelivered` varies with
+the promoted model version):
+
+```json
+{
+  "predicted_kWhDelivered": 14.23,
+  "model_name": "evcharge-sample-energy",
+  "model_version": "1"
+}
+```
+
+The API exports Prometheus counters and histograms at `/metrics`. Each successful
+prediction is also emitted as a structured JSON log and appended to the persistent
+`prediction_logs` volume at `/var/log/evcharge/predictions.jsonl`. The record contains
+the encoded feature vector and prediction, not the raw site or station identifiers.
+Inspect container logs with `docker compose logs -f api`.
+
+Run the container smoke test after Compose reports the API healthy:
+
+```powershell
+$env:EVCHARGE_API_URL = 'http://127.0.0.1:8000'
+.\.venv\Scripts\python.exe -m pytest -q tests\test_container_smoke.py
+Remove-Item Env:EVCHARGE_API_URL
+```
+
+`docker compose down` stops services but preserves the MLflow and prediction-log volumes.
+Use `docker compose down -v` only when you intentionally want to erase those local
+registry and log records.
+
 ### Licensed-data path — upGrad submission copy
 
 The upGrad submission already contains the extract in `data/raw/`, so no token is needed.
@@ -354,7 +412,7 @@ ev-charge-mlops/
 │   └── fixtures/                 Aggregate profiling, synthetic generation
 ├── docs/architecture.md          V1 and proposed V2 diagrams
 ├── STACK.md                      Tool choices against named alternatives
-├── tests/                        86 tests
+├── tests/                        89 tests (container smoke test is opt-in)
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -416,16 +474,15 @@ natively, so missingness is treated as signal rather than silently filled with a
 | MLflow Registry aliases and validation promotion gates | Done |
 | Single-command pipeline entry point | Done |
 | Local FastAPI prediction and health endpoints | Done |
+| Docker Compose Production-alias API, `/metrics`, and JSONL prediction logs | Done; verified end to end with Docker Compose |
 | EDA notebook | Done |
 | Model artefacts and model card | Done |
 | Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 86 tests |
+| Test suite | Done — 88 passed; container smoke test passes against Compose and is skipped unless `EVCHARGE_API_URL` is set |
 
 ## Planned enhancements — V2 (Final)
 
-- **Production serving** — Docker deployment, `/metrics`, request logging, and
-  operational hardening for the local FastAPI `/predict` and `/health` endpoints.
 - **CI/CD** — GitHub Actions running lint, tests, the data contract and an offline
   evaluation gate that blocks promotion on MAE regression.
 - **Orchestration** — Prefect flows for `ingest → validate → train → evaluate → register`.
@@ -437,6 +494,9 @@ natively, so missingness is treated as signal rather than silently filled with a
   magnitude.
 - **Governance** — architecture diagram, `STACK.md` justifying each tool against a named
   alternative, and a rehearsed rollback procedure.
+
+The Phase 3 local deployment is intentionally unauthenticated and binds its host ports to
+loopback. It is an evaluation/demo deployment, not a public production endpoint.
 
 ## Licence
 

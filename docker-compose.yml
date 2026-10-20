@@ -1,0 +1,81 @@
+services:
+  mlflow:
+    build: .
+    image: evcharge-capstone:local
+    command:
+      - mlflow
+      - server
+      - --backend-store-uri
+      - sqlite:////mlflow/mlflow.db
+      - --artifacts-destination
+      - /mlflow/artifacts
+      - --serve-artifacts
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --workers
+      - "1"
+    ports:
+      - "127.0.0.1:${EVCHARGE_MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 15s
+    restart: unless-stopped
+
+  bootstrap:
+    build: .
+    image: evcharge-capstone:local
+    command: ["python", "scripts/bootstrap_registry.py"]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    image: evcharge-capstone:local
+    command:
+      - uvicorn
+      - evcharge.serve.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      EVCHARGE_MODEL_NAME: evcharge-sample-energy
+      EVCHARGE_PREDICTION_LOG: /var/log/evcharge/predictions.jsonl
+    ports:
+      - "127.0.0.1:${EVCHARGE_API_PORT:-8000}:8000"
+    volumes:
+      - prediction_logs:/var/log/evcharge
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  mlflow_data:
+  prediction_logs:

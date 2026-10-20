@@ -14,13 +14,18 @@ flowchart LR
   D -->|clean| F[features.build<br/>fit / transform]
   F --> G[Temporal split<br/>train / validation / post-shift]
   G --> H[Mean · Ridge · HistGradientBoosting]
-  H --> I[(MLflow<br/>params, metrics, git SHA, data hash)]
+  H --> I[(MLflow tracking<br/>params, metrics, git SHA, data hash<br/>+ Model Registry)]
   H --> J[artifacts/training_*.json]
   C -->|freeze 2019-07..2020-02| R[(data/reference<br/>v1 + manifest)]
-  H --> K[FastAPI<br/>/health · /predict]
+  I --> K[Production alias<br/>per source and target]
+  K --> L[Docker Compose FastAPI<br/>/health · /predict · /metrics]
+  L --> M[(Structured prediction<br/>JSONL log)]
 ```
 
-Entry point: `python -m evcharge.pipeline --source sample|raw`.
+Training entry point: `python -m evcharge.pipeline --source sample|raw`.
+Container deployment: `docker compose up --build -d`. On an empty registry volume, the
+bootstrap service trains the sample models before the API loads `evcharge-sample-energy`
+from its `production` alias.
 
 ### Why the stages are ordered this way
 
@@ -34,7 +39,7 @@ execute when the contract fails — ordering is enforced, not merely intended.
 extract. Everything downstream is identical, so the demo path exercises the real pipeline
 rather than a reduced copy of it.
 
-## V2 (Final) — proposed
+## V2 (Final target; registry and Compose serving implemented)
 
 ```mermaid
 flowchart TB
@@ -46,7 +51,7 @@ flowchart TB
   end
 
   E -->|fail| F[Block promotion<br/>+ alert]
-  E -->|pass| G[(MLflow Registry<br/>None → Staging → Production)]
+  E -->|pass|   G[(MLflow Registry<br/>staging → production aliases)]
   G --> H[Docker image<br/>pinned dependencies]
   H --> I[FastAPI service<br/>/predict /health /metrics]
 
@@ -66,8 +71,9 @@ flowchart TB
 | V2 requirement | V1 foundation |
 |---|---|
 | Train/serve parity | `features.build` is the single definition; a fixed 1,000-session audit exercises request validation and normalization |
-| Local prediction API | FastAPI loads the saved estimator and fitted feature spec |
-| Promotion gate | Temporal evaluation and baseline floors already produce the comparison metric |
+| Local prediction API | Compose loads the Production alias from MLflow; local development can still load a saved estimator and fitted feature spec |
+| Promotion gate | Candidate promotion compares temporal validation MAE against both baselines and the Production model |
+| Metrics and prediction evidence | `/metrics` exports counters and histograms; the API writes feature-only JSONL prediction records |
 | Drift reference window | Versioned v1 snapshot with row counts and file/logical hashes; real rows stay out of public Git |
 | Drift hypotheses | Predeclared and testable in `docs/drift_hypotheses.md` |
 | Reproducible retraining | Partition replacement is rollback-safe; every run logs its input data hash |
@@ -95,8 +101,8 @@ controlled drift of known magnitude. See [`drift_hypotheses.md`](drift_hypothese
 ### Rollback
 
 1. Identify the last known-good version in the MLflow Registry.
-2. Transition the current Production version to `Archived` and promote the previous one.
-3. Redeploy the corresponding Docker image tag.
+2. Repoint the model's `production` alias to that version.
+3. Restart or redeploy the API so it reloads the Production alias.
 4. Confirm `/health` and verify drift metrics return to reference levels.
 
 The procedure is written down so recovery does not depend on the original author being

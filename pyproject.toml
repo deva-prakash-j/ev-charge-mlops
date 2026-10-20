@@ -12,6 +12,7 @@ requires-python = ">=3.11"
 serve = [
     "fastapi>=0.115,<1",
     "uvicorn>=0.34,<1",
+    "prometheus-client>=0.20,<1",
 ]
 
 [tool.setuptools.packages.find]

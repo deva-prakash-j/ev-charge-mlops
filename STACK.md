@@ -157,10 +157,16 @@ path actively misleading.
 
 ### FastAPI + Uvicorn
 
-The V1 local API loads the model and its fitted `FeatureSpec` together, then calls the
-shared feature builder used by training. `/health` checks model readiness and `/predict`
-rejects extra fields, including post-hoc values. Docker, metrics export, authentication
-and production deployment remain V2 work.
+The local development API loads the saved model and its fitted `FeatureSpec` together,
+then calls the shared feature builder used by training. The Docker Compose API instead
+loads the `production` alias from MLflow and waits for the sample registry bootstrap on
+first start. Both expose `/health`, `/predict` and Prometheus-format `/metrics`; the
+container API emits a feature-only prediction JSONL record for later drift analysis.
+
+The Compose image uses the exact direct runtime pins in `requirements-container.txt`,
+excludes licensed records, and persists the MLflow store and prediction logs in named
+volumes. Host ports bind to loopback. The demo has no authentication or TLS and is not
+intended as a public production deployment.
 
 ---
 
@@ -168,9 +174,8 @@ and production deployment remain V2 work.
 
 | Tool | Purpose | Alternative considered |
 |---|---|---|
-| Docker + FastAPI + Uvicorn (V2) | Production environment and serving | Conda / Flask |
 | GitHub Actions | CI and quality gates | Jenkins — needs a server to maintain |
 | Prefect | Orchestration | Airflow — heavier scheduler for a four-week project |
 | Evidently | Drift reports and metrics | Hand-rolled PSI — no Data Docs, more to verify |
-| Prometheus + Grafana | Metric storage and alerting | Logging to files — no alerting path |
+| Prometheus + Grafana | Metric storage, dashboards and alerting for the existing `/metrics` endpoint | Logging to files — no alerting path |
 | SDV | Injected drift for detector testing | — |
