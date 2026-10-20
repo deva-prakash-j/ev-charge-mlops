@@ -417,6 +417,10 @@ prediction is also emitted as a structured JSON log and appended to the persiste
 `prediction_logs` volume at `/var/log/evcharge/predictions.jsonl`. The record contains
 the encoded feature vector and prediction, not the raw site or station identifiers.
 Inspect container logs with `docker compose logs -f api`.
+The default application image is `evcharge-capstone:local`; set `EVCHARGE_IMAGE` to an
+existing tag to deploy or restore the shared image used by the API, MLflow, and bootstrap
+containers. The isolated rollback drill and exact procedure are recorded in
+[`docs/operations_governance.md`](docs/operations_governance.md).
 
 Run the container smoke test after Compose reports the API healthy:
 
@@ -548,6 +552,21 @@ support, and no additional native runtime to conflict.
 request at all. `has_user_inputs` makes that explicit and the estimator handles NaN
 natively, so missingness is treated as signal rather than silently filled with a median.
 
+## Operational ownership and rollback
+
+The proposal identifies these model consumers: charging operations/site energy
+management, the charging app/driver-experience team, the smart-charging scheduler, and
+data governance/audit. The MLOps engineer owns deployment, promotion, rollback,
+monitoring, and retraining; charging operations accepts or rejects retrained candidates.
+
+For this academic demo, **Deva Prakash J** is the acting MLOps owner and first alert
+responder. A real production deployment still requires an explicitly staffed on-call rota
+and a named charging-operations approver; this prototype is not a production on-call
+service. The isolated rollback drill passed and restored the sample API to registry
+version 1 using the captured previous image ID. See
+[`docs/operations_governance.md`](docs/operations_governance.md) for scope, evidence, and
+limitations.
+
 ## Current status — V1 baseline and V2 monitoring
 
 | Component | Status |
@@ -574,11 +593,10 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Prefect training and monthly monitoring flows, drift scoring and guarded retraining | Done; requires local Prefect server and licensed raw data |
 | Evidently PSI/KS/JS, Prometheus export, Grafana dashboard and alert rules | Done; target PSI alert validated on April 2020 |
 | Drift false-alarm, sensitivity and post-shift recovery evaluation | Done; 0/8 false alarms, +30% first tested PSI crossing; recovery target not met |
+| Phase 7 governance | Done; isolated registry-alias and prior-image rollback drill passed; ownership and direct-tool license inventory documented |
 
-## Remaining work — Operations and submission
+## Remaining work — Submission and model recovery
 
-- **Governance** — run and record the rollback drill, name alert responders and
-  deployment owners, and complete tool-licence inventory.
 - **Submission** — technical report, executive presentation, final packaging and
   fresh-clone/fresh-ZIP verification.
 - **Model recovery** — investigate why later chronological retraining windows remain
@@ -591,4 +609,5 @@ loopback. It is an evaluation/demo deployment, not a public production endpoint.
 
 Code is MIT licensed. The ACN-Data dataset is **not** covered by that licence and remains
 subject to the publisher's terms (see [`DATA_LICENCE.md`](DATA_LICENCE.md)); it is not
-published in this repository.
+published in this repository. Third-party package and tool licenses, including the
+inventory scope and exclusions, are listed in [`STACK.md`](STACK.md).

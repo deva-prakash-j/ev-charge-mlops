@@ -150,6 +150,22 @@ def persist_best_model(
         if target == "energy"
         else "connectedHours (elapsed connection-to-disconnection hours)"
     )
+    if source == "raw" and target == "energy":
+        evaluation_scope = (
+            "The licensed raw-energy model is evaluated in "
+            "[`docs/drift_evaluation.md`](../../docs/drift_evaluation.md); "
+            "the 10% post-shift recovery target remains unmet."
+        )
+    elif source == "sample":
+        evaluation_scope = (
+            "The drift and retraining results in "
+            "[`docs/drift_evaluation.md`](../../docs/drift_evaluation.md) use the "
+            "licensed raw-energy path and are not results for this synthetic model."
+        )
+    else:
+        evaluation_scope = (
+            "No drift or retraining recovery result is claimed for this model."
+        )
     (model_dir / "MODEL_CARD.md").write_text(
         f"# Model card - {name} ({source}, {target})\n\n"
         f"- Target: {target_description}\n"
@@ -160,6 +176,10 @@ def persist_best_model(
         f"- Post-shift MAE: {metrics.get('post_shift', {}).get('overall', {}).get('mae', float('nan')):.4f}\n\n"
         "Inputs are plug-in-time only. Post-hoc columns (disconnectTime, "
         "doneChargingTime) are rejected by the feature builder.\n\n"
+        f"{evaluation_scope}\n\n"
+        "The executed alias and image rollback drill is an isolated sample-API "
+        "operational test, not a model-quality result; see "
+        "[`docs/operations_governance.md`](../../docs/operations_governance.md).\n\n"
         "Load with:\n\n"
         "```python\n"
         "import joblib\n"

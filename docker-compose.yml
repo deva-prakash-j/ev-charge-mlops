@@ -1,7 +1,7 @@
 services:
   mlflow:
     build: .
-    image: evcharge-capstone:local
+    image: ${EVCHARGE_IMAGE:-evcharge-capstone:local}
     command:
       - mlflow
       - server
@@ -34,7 +34,7 @@ services:
 
   bootstrap:
     build: .
-    image: evcharge-capstone:local
+    image: ${EVCHARGE_IMAGE:-evcharge-capstone:local}
     command: ["python", "scripts/bootstrap_registry.py"]
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
@@ -45,7 +45,7 @@ services:
 
   api:
     build: .
-    image: evcharge-capstone:local
+    image: ${EVCHARGE_IMAGE:-evcharge-capstone:local}
     command:
       - uvicorn
       - evcharge.serve.app:app

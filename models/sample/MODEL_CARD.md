@@ -9,6 +9,10 @@
 
 Inputs are plug-in-time only. Post-hoc columns (disconnectTime, doneChargingTime) are rejected by the feature builder.
 
+The drift and retraining results in [`docs/drift_evaluation.md`](../../docs/drift_evaluation.md) use the licensed raw-energy path and are not results for this synthetic model.
+
+The executed alias and image rollback drill is an isolated sample-API operational test, not a model-quality result; see [`docs/operations_governance.md`](../../docs/operations_governance.md).
+
 Load with:
 
 ```python

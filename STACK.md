@@ -1,8 +1,8 @@
 # STACK
 
-Every tool here is justified against a named alternative. Entries marked **(V2)** are
-planned rather than implemented; Prefect orchestration and the local FastAPI serving path
-are implemented.
+Every major tool here is justified against a named alternative. The core pipeline,
+Prefect orchestration, registry-backed API, and drift-monitoring stack are implemented;
+remaining submission and model-recovery work is tracked in the capstone phase plan.
 
 ## Constraints
 
@@ -231,6 +231,60 @@ not install its scheduler. The schedule is local: a Prefect server and the flow-
 process must remain running. This is appropriate for the academic single-machine
 deployment; a managed Prefect service is an alternative if always-on scheduling is
 required. The monthly deployment runs at 02:00 UTC on day 1 and requires an ACN API token.
+
+---
+
+## Licenses and data terms
+
+The repository's own code is MIT licensed (`LICENSE`). The inventory below covers
+declared direct Python dependencies and the named container/CI tools; it is not a
+transitive software bill of materials (SBOM). Exact container-runtime pins come from
+`requirements-container.txt`; optional and development tools retain the ranges declared
+in `requirements.txt` or `pyproject.toml`.
+
+### Direct container runtime dependencies
+
+| Component | Version | License | Source |
+|---|---:|---|---|
+| Python | `3.11` (`python:3.11-slim-bookworm`) | PSF-2.0 | [Python license](https://docs.python.org/3/license.html) |
+| FastAPI | `0.142.2` | MIT | [PyPI release metadata](https://pypi.org/project/fastapi/0.142.2/) |
+| Uvicorn | `0.54.0` | BSD-3-Clause | [PyPI release metadata](https://pypi.org/project/uvicorn/0.54.0/) |
+| MLflow | `2.22.5` | Apache-2.0 | [PyPI release metadata](https://pypi.org/project/mlflow/2.22.5/) |
+| SQLAlchemy | `2.0.55` | MIT | [PyPI release metadata](https://pypi.org/project/SQLAlchemy/2.0.55/) |
+| NumPy | `1.26.4` | BSD-3-Clause | [PyPI release metadata](https://pypi.org/project/numpy/1.26.4/) |
+| pandas | `2.3.3` | BSD-3-Clause | [PyPI release metadata](https://pypi.org/project/pandas/2.3.3/) |
+| PyArrow | `17.0.0` | Apache-2.0 | [PyPI release metadata](https://pypi.org/project/pyarrow/17.0.0/) |
+| scikit-learn | `1.9.1` | BSD-3-Clause | [PyPI release metadata](https://pypi.org/project/scikit-learn/1.9.1/) |
+| joblib | `1.6.0` | BSD-3-Clause | [PyPI release metadata](https://pypi.org/project/joblib/1.6.0/) |
+| Great Expectations | `0.18.22` | Apache-2.0 | [PyPI release metadata](https://pypi.org/project/great-expectations/0.18.22/) |
+| python-dotenv | `1.2.4` | BSD-3-Clause | [PyPI release metadata](https://pypi.org/project/python-dotenv/1.2.4/) |
+| requests | `2.34.2` | Apache-2.0 | [PyPI release metadata](https://pypi.org/project/requests/2.34.2/) |
+| prometheus-client | `0.26.0` | Apache-2.0 AND BSD-2-Clause | [PyPI release metadata](https://pypi.org/project/prometheus-client/0.26.0/) |
+
+### Optional, development, and infrastructure tools
+
+| Component | Declared version | License | Source |
+|---|---|---|---|
+| Prefect | `>=3.0,<4` (optional orchestration extra) | Apache-2.0 | [Project license](https://github.com/PrefectHQ/prefect/blob/main/LICENSE) |
+| Evidently | `>=0.7,<1` (optional monitoring extra) | Apache-2.0 | [Project license](https://github.com/evidentlyai/evidently/blob/main/LICENSE) |
+| Ruff | `>=0.14,<1` (development extra) | MIT | [Project license](https://github.com/astral-sh/ruff/blob/main/LICENSE) |
+| pytest | `~=8.3` | MIT | [PyPI project metadata](https://pypi.org/project/pytest/) |
+| Matplotlib | `~=3.9` | Matplotlib License (PSF-based) | [Project license](https://github.com/matplotlib/matplotlib/blob/main/LICENSE) |
+| Jupyter metapackage | `~=1.1` | BSD-3-Clause | [PyPI project metadata](https://pypi.org/project/jupyter/) |
+| Prometheus server (`prom/prometheus:v2.55.1`) | `v2.55.1` | Apache-2.0 | [Project license](https://github.com/prometheus/prometheus/blob/main/LICENSE) |
+| Pushgateway (`prom/pushgateway:v1.10.0`) | `v1.10.0` | Apache-2.0 | [Project license](https://github.com/prometheus/pushgateway/blob/main/LICENSE) |
+| Grafana (`grafana/grafana:11.3.0`) | `11.3.0` | AGPL-3.0 | [Project license](https://github.com/grafana/grafana/blob/main/LICENSE) |
+| Docker Engine / Compose | Host-installed, not pinned here | Apache-2.0 (Engine and Compose source) | [Moby license](https://github.com/moby/moby/blob/master/LICENSE), [Compose license](https://github.com/docker/compose/blob/main/LICENSE) |
+| Docker Desktop | Host-installed, not pinned here | Separate Docker Desktop terms | [Docker subscription terms](https://www.docker.com/legal/docker-subscription-service-agreement/) |
+| `actions/checkout`, `actions/setup-python`, `actions/upload-artifact` | `v4`, `v5`, `v4` in CI | MIT (each action) | [checkout](https://github.com/actions/checkout/blob/main/LICENSE), [setup-python](https://github.com/actions/setup-python/blob/main/LICENSE), [upload-artifact](https://github.com/actions/upload-artifact/blob/main/LICENSE) |
+| GitHub Actions service | Hosted service | GitHub service terms; not an open-source package license | [GitHub terms](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service) |
+
+The Python base image also includes Debian and other transitive system packages with
+their own licenses; this table does not enumerate them. Generate and review an image and
+Python SBOM before redistributing a built image or making a broader compliance claim.
+The ACN-Data snapshot and derivatives are governed separately by the publisher's
+educational/research terms; see [`DATA_LICENCE.md`](DATA_LICENCE.md). The code license
+does not grant rights to redistribute the dataset.
 
 Detector validation and the failed 10% post-shift recovery target are documented in
 [`docs/drift_evaluation.md`](docs/drift_evaluation.md).

@@ -117,11 +117,16 @@ revalidating unchanged data or duplicating a successful retrain.
 
 1. Identify the last known-good version in the MLflow Registry.
 2. Repoint the model's `production` alias to that version.
-3. Restart or redeploy the API so it reloads the Production alias.
-4. Confirm `/health` and verify drift metrics return to reference levels.
+3. Set `EVCHARGE_IMAGE` to the known-good shared application-image tag and recreate
+   the MLflow, bootstrap, and API containers so the API reloads the Production alias.
+4. Confirm `/health` reports the restored model version, send a smoke prediction, and
+   check API error/latency metrics. Input-drift metrics do not necessarily reset when a
+   model is rolled back.
 
-The procedure is written down so recovery does not depend on the original author being
-available — the failure mode called out in the Stage-Pitfalls guide.
+The isolated execution and evidence are recorded in
+[`operations_governance.md`](operations_governance.md). A real deployment must assign an
+on-call rota and charging-operations approver; the academic demo responder is not a
+production rota.
 
 ## Known gaps
 
