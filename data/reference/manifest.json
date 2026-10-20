@@ -1,8 +1,8 @@
 {
   "snapshot_version": "v1",
   "file": "drift_reference_v1.parquet",
-  "sha256": "679e1bda3d1d4e2ce38a6dac47a7d77c6765db905a8816f00affe69634b4ae25",
-  "logical_sha256": "4b9a365124117664140f17766ef396c206de53d707a47589b7b0d5c497c6f50a",
+  "sha256": "fe8bbb47323dec1b88580bbe4a0863f03c2866728fd201f0e1ef29fc133d43eb",
+  "logical_sha256": "164c044bd171b2baa5ab75226da49e799c68c6774363dd00125130b330575804",
   "rows": 19144,
   "columns": [
     "connectionTimeLocal",
@@ -13,6 +13,7 @@
     "milesRequested",
     "minutesAvailable",
     "WhPerMile",
+    "declared_duration_minutes",
     "kWhDelivered",
     "connectedHours",
     "declared_delivered_gap_kwh"

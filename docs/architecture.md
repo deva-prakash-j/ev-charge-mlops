@@ -39,33 +39,37 @@ execute when the contract fails — ordering is enforced, not merely intended.
 extract. Everything downstream is identical, so the demo path exercises the real pipeline
 rather than a reduced copy of it.
 
-## V2 (Final target; registry and Compose serving implemented)
+## V2 (Drift-aware monitoring implemented)
 
 ```mermaid
 flowchart TB
-  subgraph ORCH["Prefect orchestration"]
-    A[Ingest] --> B[Validate<br/>Great Expectations]
-    B --> C[Build features<br/>shared module]
-    C --> D[Train]
-    D --> E{Quality gate<br/>MAE regression?}
+  subgraph ORCH["Prefect"]
+    A[Monthly raw-data flow<br/>02:00 UTC, day 1] --> B[Fetch and normalise]
+    B --> C[Validate new or changed months]
+    C --> D[Evidently drift scoring]
+    D --> E{Latest batch alert?}
+    E -->|yes| F[Quality-gated retraining flow]
+    G[Training flow] --> H[Existing pipeline<br/>contract · train · evaluate · register]
+    F --> H
   end
 
-  E -->|fail| F[Block promotion<br/>+ alert]
-  E -->|pass|   G[(MLflow Registry<br/>staging → production aliases)]
-  G --> H[Docker image<br/>pinned dependencies]
-  H --> I[FastAPI service<br/>/predict /health /metrics]
+  I[(Frozen reference<br/>manifest checksum verified)] --> D
+  J[(MLflow Production alias<br/>model + feature spec)] --> D
+  H --> K[(MLflow Registry<br/>staging → production aliases)]
+  K --> L[Docker image<br/>pinned dependencies]
+  L --> M[FastAPI service<br/>/predict /health /metrics]
 
-  I --> J[(Prediction log)]
-  J --> K[Evidently<br/>PSI · KS · JS divergence]
-  L[(Frozen reference<br/>window)] --> K
-  K --> M[Prometheus] --> N[Grafana<br/>dashboards + alert rules]
-  N -->|threshold breach| O[Retraining trigger]
-  O --> A
+  M --> N[(Prediction log)]
+  D --> O[Data-free JSON / HTML reports]
+  D --> P[Pushgateway]
+  P --> Q[Prometheus<br/>scores + alert rules]
+  M --> Q
+  Q --> R[Grafana<br/>drift dashboard]
 
-  P[GitHub Actions] --> R[Lint · tests · sample contract · evaluation gate · Docker build]
-  R --> S[(Run-local MLflow registry)]
-  S --> T[Promotion and degraded-candidate evidence]
-  G -.->|demote previous version| Q[Rollback runbook]
+  CI[GitHub Actions] --> CIL[Lint · tests · sample contract · evaluation gate · Docker build]
+  CIL --> CIS[(Run-local MLflow registry)]
+  CIS --> CIE[Promotion and degraded-candidate evidence]
+  K -.->|demote previous version| S[Rollback runbook]
 ```
 
 ### What V1 already guarantees for V2
@@ -85,20 +89,29 @@ flowchart TB
 
 A frozen reference window (2019-07 to 2020-02) is built by
 `python -m evcharge.validation.reference --source raw` and compared against each
-incoming monthly batch on both input features and the prediction distribution. Its
-data-free manifest is public; the snapshot records stay in the upGrad evaluation copy.
+new or changed monthly batch on the model inputs, delivered-energy target, and
+prediction distribution. The Evidently report and a data-free JSON summary are written
+under `artifacts/drift/`; the snapshot records stay in the upGrad evaluation copy.
 
 | Signal | Metric | Threshold |
 |---|---|---|
 | `kWhDelivered` distribution | PSI | > 0.2 raises an alert |
-| Feature distributions | KS test | p < 0.01 |
-| Prediction distribution | Jensen-Shannon | reported alongside PSI |
+| Numeric inputs, target and prediction | KS statistic and p-value | p < 0.01 is reported |
+| Inputs, target and prediction | Jensen-Shannon distance | Reported alongside PSI |
+| Per-column evidence | Non-missing counts and missing fractions | Exported with each score |
 
 The detector is then **validated rather than assumed**: it must fire on the known
 March–April 2020 shift within one monthly batch. False alarms are measured out-of-sample;
 the eight months forming the reference cannot be scored against that same reference and
-counted as independent evidence. Sensitivity is measured against batches carrying
-controlled drift of known magnitude. See [`drift_hypotheses.md`](drift_hypotheses.md).
+counted as independent evidence. Sensitivity is measured using deterministic
+multiplicative changes to delivered energy, not a synthetic-data package. Reproducible
+detector and retraining results are in [`drift_evaluation.md`](drift_evaluation.md).
+
+The monthly Prefect flow calls the retraining hook directly for an alert on the latest
+available batch; Prometheus alert rules and Grafana provide a separate observability
+surface and do not send a webhook back to Prefect. Score and retraining fingerprints are
+persisted independently, so a failed export or retraining attempt is retried without
+revalidating unchanged data or duplicating a successful retrain.
 
 ### Rollback
 
@@ -112,6 +125,10 @@ available — the failure mode called out in the Stage-Pitfalls guide.
 
 ## Known gaps
 
+- **Post-shift recovery target remains unmet.** Chronological retraining experiments
+  reduced the later held-out MAE relative to the original post-shift model in some
+  windows, but the best tested MAE remains above the declared 10% recovery ceiling; see
+  [`drift_evaluation.md`](drift_evaluation.md).
 - **Rolling site occupancy** remains deliberately deferred. It requires a point-in-time
   join against session history; deriving it from the batch would make a prediction depend
   on which other rows happen to be scored alongside it. The deferral and feature rationale

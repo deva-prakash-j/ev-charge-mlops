@@ -17,6 +17,14 @@ def _source_frame():
         {
             "sessionID": ["old", "in-window", "future"],
             "userID": ["private-1", "private-2", "private-3"],
+            "connectionTime": pd.to_datetime(
+                ["2019-06-30T23:00:00Z", "2019-07-01T00:00:00Z", "2020-03-01T00:00:00Z"],
+                utc=True,
+            ),
+            "requestedDeparture": pd.to_datetime(
+                ["2019-07-01T00:00:00Z", "2019-07-01T01:30:00Z", "2020-03-01T02:00:00Z"],
+                utc=True,
+            ),
             "connectionTimeLocal": pd.to_datetime(
                 ["2019-06-30", "2019-07-01", "2020-03-01"]
             ),
@@ -48,6 +56,7 @@ def test_reference_snapshot_is_half_open_and_excludes_identifiers(tmp_path):
     assert snapshot.columns.tolist() == list(SNAPSHOT_COLUMNS)
     assert "sessionID" not in snapshot and "userID" not in snapshot
     assert snapshot["declared_delivered_gap_kwh"].iat[0] == -5.0
+    assert snapshot["declared_duration_minutes"].iat[0] == 90.0
 
 
 def test_reference_manifest_checksums_file_and_counts_rows(tmp_path):

@@ -1,7 +1,8 @@
 # STACK
 
 Every tool here is justified against a named alternative. Entries marked **(V2)** are
-planned rather than implemented; the local FastAPI serving path is implemented in V1.
+planned rather than implemented; Prefect orchestration and the local FastAPI serving path
+are implemented.
 
 ## Constraints
 
@@ -137,10 +138,10 @@ routinely serialise config objects.
 
 **Alternative considered:** SDV (Synthetic Data Vault).
 
-SDV is the better general tool and is planned for V2 to generate drift of **known
-magnitude** for detector sensitivity testing. For the committed fixture it was overkill:
-the requirement is a small, deterministic, dependency-light artefact whose generation an
-evaluator can read and verify in one file.
+SDV was considered for detector sensitivity testing but is not used. The measured
+sensitivity curve applies explicit multiplicative shifts to `kWhDelivered`, making the
+intervention deterministic and easy to inspect without another synthetic-data
+dependency.
 
 The split keeps real records out of the public repository. `fixtures/profile.py` needs
 the licensed extract and produces only aggregate statistics; `fixtures/generate.py` reads
@@ -170,6 +171,37 @@ intended as a public production deployment.
 
 ---
 
+## Drift monitoring
+
+### Evidently
+
+**Alternative considered:** hand-rolled PSI and statistical tests.
+
+Evidently runs PSI and Jensen–Shannon distance for numeric and categorical features
+against the checksum-verified frozen reference; the KS test is applied to continuous
+features. SciPy supplies the KS statistic alongside Evidently's p-value. The monitor
+writes data-free JSON, Evidently JSON and HTML reports; it also records non-missing
+sample counts and missing fractions so scores are interpreted with coverage. Evidently
+is an optional dependency (`.[monitoring]`).
+
+### Prometheus Pushgateway, Prometheus and Grafana
+
+**Alternative considered:** application logs alone.
+
+The monthly batch monitor is a short-lived Prefect flow, so it pushes its feature scores
+to the Pushgateway rather than trying to expose them from the always-on prediction API.
+Prometheus scrapes both the Pushgateway and API, evaluates PSI and API-availability rules,
+and retains 30 days of local data. Grafana provisions a Prometheus datasource and
+dashboard for target/prediction PSI, input PSI, KS, Jensen–Shannon, alert state, sample
+counts, missingness and API prediction rate. Compose ports bind to loopback; the stack is
+for local academic evaluation, not public production.
+
+The Prefect monitor directly calls the quality-gated retraining flow when the latest
+scored batch alerts. Prometheus/Grafana provide operator visibility; no alert webhook or
+implicit model promotion is involved.
+
+---
+
 ## CI/CD
 
 GitHub Actions runs Ruff, the tests, sample-data validation and evaluation, and a Docker
@@ -178,11 +210,27 @@ models, then verifies a deliberately degraded candidate is blocked without chang
 Production aliases. The workflow uploads the run store and decision reports for 14 days;
 it does not publish models to a persistent registry or deploy the API.
 
-## Planned (V2)
+---
 
-| Tool | Purpose | Alternative considered |
-|---|---|---|
-| Prefect | Orchestration | Airflow — heavier scheduler for a four-week project |
-| Evidently | Drift reports and metrics | Hand-rolled PSI — no Data Docs, more to verify |
-| Prometheus + Grafana | Metric storage, dashboards and alerting for the existing `/metrics` endpoint | Logging to files — no alerting path |
-| SDV | Injected drift for detector testing | — |
+## Workflow orchestration
+
+### Prefect 3
+
+**Alternative considered:** Apache Airflow.
+
+Prefect orchestrates the existing contract-gated training pipeline and schedules a
+monthly raw-data monitor. The monitor fetches ACN-Data, normalises it, validates and
+scores each new or changed month, and exports the drift report. Content fingerprints
+prevent repeated validation and scoring; score and retraining state are tracked
+separately so failures can be retried without duplicating successful work. A retraining
+flow accepts the detector's boolean alert and runs the existing training, evaluation,
+and MLflow promotion gates; it does not bypass them.
+
+Prefect is an optional dependency (`.[orchestration]`), so API and batch-only users do
+not install its scheduler. The schedule is local: a Prefect server and the flow-serving
+process must remain running. This is appropriate for the academic single-machine
+deployment; a managed Prefect service is an alternative if always-on scheduling is
+required. The monthly deployment runs at 02:00 UTC on day 1 and requires an ACN API token.
+
+Detector validation and the failed 10% post-shift recovery target are documented in
+[`docs/drift_evaluation.md`](docs/drift_evaluation.md).

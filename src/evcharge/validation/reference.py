@@ -24,6 +24,7 @@ SNAPSHOT_COLUMNS = (
     "milesRequested",
     "minutesAvailable",
     "WhPerMile",
+    "declared_duration_minutes",
     "kWhDelivered",
     "connectedHours",
     "declared_delivered_gap_kwh",
@@ -43,6 +44,15 @@ def build_reference_frame(
         & (times < window_end)
         & clean["kWhDelivered"].notna()
     ].copy()
+    if "connectionTime" not in selected or "requestedDeparture" not in selected:
+        raise ConfigError(
+            "Reference input must include connectionTime and requestedDeparture "
+            "to derive the plug-in-time duration feature."
+        )
+    selected["declared_duration_minutes"] = (
+        pd.to_datetime(selected["requestedDeparture"], utc=True, errors="coerce")
+        - pd.to_datetime(selected["connectionTime"], utc=True, errors="coerce")
+    ).dt.total_seconds() / 60.0
     selected["declared_delivered_gap_kwh"] = (
         pd.to_numeric(selected["kWhDelivered"], errors="coerce")
         - pd.to_numeric(selected["kWhRequested"], errors="coerce")

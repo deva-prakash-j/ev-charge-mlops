@@ -65,14 +65,26 @@ def stage_contract(settings: Settings, source: str) -> dict[str, Any]:
     }
 
 
-def stage_train(settings: Settings, source: str) -> dict[str, Any]:
+def stage_train(
+    settings: Settings,
+    source: str,
+    split_override: dict[str, str] | None = None,
+) -> dict[str, Any]:
     from evcharge.models.train import run as train_run
 
-    report = train_run(settings, source)
-    dwell_report = train_run(settings, source, target="dwell")
+    train_options = (
+        {"split_override": split_override} if split_override is not None else {}
+    )
+    report = train_run(settings, source, **train_options)
+    dwell_report = train_run(settings, source, target="dwell", **train_options)
     validation = {
         model: splits["validation"]["overall"]["mae"]
         for model, splits in report["results"].items()
+    }
+    post_shift = {
+        model: splits["post_shift"]["overall"]["mae"]
+        for model, splits in report["results"].items()
+        if "post_shift" in splits
     }
     best = min(validation, key=validation.get)
     dwell_validation = {
@@ -80,12 +92,21 @@ def stage_train(settings: Settings, source: str) -> dict[str, Any]:
         for model, splits in dwell_report["results"].items()
     }
     best_dwell = min(dwell_validation, key=dwell_validation.get)
+    dwell_post_shift = {
+        model: splits["post_shift"]["overall"]["mae"]
+        for model, splits in dwell_report["results"].items()
+        if "post_shift" in splits
+    }
     return {
         "rows": report["rows"],
         "validation_mae": {k: round(v, 4) for k, v in validation.items()},
+        "post_shift_mae": {k: round(v, 4) for k, v in post_shift.items()},
         "best_model": best,
         "dwell_validation_mae": {
             k: round(v, 4) for k, v in dwell_validation.items()
+        },
+        "dwell_post_shift_mae": {
+            k: round(v, 4) for k, v in dwell_post_shift.items()
         },
         "best_dwell_model": best_dwell,
         "git_commit": report["git_commit"][:12],
@@ -106,8 +127,16 @@ DEFAULT_STAGES = ("normalise", "contract", "train")
 
 
 def run_pipeline(
-    settings: Settings, source: str, stages: tuple[str, ...]
+    settings: Settings,
+    source: str,
+    stages: tuple[str, ...],
+    stage_overrides: dict[str, Stage] | None = None,
 ) -> dict[str, Any]:
+    stage_overrides = stage_overrides or {}
+    unknown_overrides = set(stage_overrides) - set(STAGES)
+    if unknown_overrides:
+        raise ConfigError(f"Unknown pipeline stage overrides: {sorted(unknown_overrides)}")
+
     summary: dict[str, Any] = {
         "source": source,
         "started_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -118,7 +147,8 @@ def run_pipeline(
         logger.info("--- %s ---", name)
         started = time.perf_counter()
         try:
-            result = STAGES[name](settings, source)
+            stage = stage_overrides.get(name, STAGES[name])
+            result = stage(settings, source)
         except Exception as exc:
             logger.exception("Pipeline stage %s failed", name)
             summary["stages"][name] = {

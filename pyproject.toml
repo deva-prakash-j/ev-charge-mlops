@@ -17,6 +17,12 @@ serve = [
 dev = [
     "ruff>=0.14,<1",
 ]
+orchestration = [
+    "prefect>=3.0,<4",
+]
+monitoring = [
+    "evidently>=0.7,<1",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

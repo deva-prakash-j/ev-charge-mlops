@@ -1,0 +1,40 @@
+groups:
+  - name: evcharge-drift
+    rules:
+      - alert: EVChargeDeliveredEnergyDrift
+        expr: |
+          (evcharge_drift_psi{column="kWhDelivered"} > 0.2)
+          and on(source, batch_month)
+          (evcharge_drift_latest_alert == 1)
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: Delivered-energy distribution drift
+          description: >-
+            PSI for kWhDelivered exceeded the predeclared 0.2 threshold for
+            batch {{ $labels.batch_month }}. The Prefect monitor starts the
+            quality-gated retraining flow for the latest batch.
+
+      - alert: EVChargeInputOrPredictionDrift
+        expr: |
+          (evcharge_drift_detected == 1)
+          and on(source, batch_month)
+          (evcharge_drift_latest_alert == 1)
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: EV charge input or prediction drift detected
+          description: >-
+            PSI exceeded 0.2 for {{ $labels.column }} in batch
+            {{ $labels.batch_month }}.
+
+      - alert: EVChargePredictionAPIUnavailable
+        expr: up{job="evcharge-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: EV charge prediction API is unavailable
+          description: Prometheus cannot scrape the EV charge API metrics endpoint.

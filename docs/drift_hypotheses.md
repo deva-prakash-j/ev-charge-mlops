@@ -28,3 +28,7 @@ data-free `data/reference/manifest.json`.
 - The pre-shift false-alarm study must be out-of-sample: the 8 months that make up the
   reference cannot also be scored against that same reference and counted as independent
   evidence. Use leave-one-month-out references or an earlier window.
+
+Measured detector and retraining outcomes are reported in
+[`drift_evaluation.md`](drift_evaluation.md); the declared thresholds above were not
+changed after scoring.

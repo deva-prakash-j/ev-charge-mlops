@@ -5,7 +5,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
 [![CI](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-89%20collected-brightgreen)
+![tests](https://img.shields.io/badge/tests-105%20collected-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -216,6 +216,83 @@ Exploratory analysis, also credential-free:
 
 Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
+### Prefect workflow automation
+
+Install the optional orchestration and monitoring dependencies:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[orchestration,monitoring]"
+```
+
+Run the contract-gated training flow once, or validate newly added monthly batches
+without fetching:
+
+```powershell
+.\.venv\Scripts\python.exe -m evcharge.orchestration train --source sample
+.\.venv\Scripts\python.exe -m evcharge.orchestration monitor --source raw --no-fetch
+```
+
+To run the scheduled raw-data monitor locally, start a Prefect server in one terminal:
+
+```powershell
+.\.venv\Scripts\prefect.exe server start
+```
+
+In another terminal, configure its local API and start the deployment process:
+
+```powershell
+.\.venv\Scripts\prefect.exe config set PREFECT_API_URL=http://127.0.0.1:4200/api
+.\.venv\Scripts\python.exe -m evcharge.orchestration serve
+```
+
+The deployment fetches the licensed ACN extract and runs at 02:00 UTC on the first of
+each month. It normalises the data and validates each new or changed month; content
+fingerprints in `artifacts/monitoring/monthly_raw.json` let unchanged batches skip
+validation and scoring, while failed scoring or retraining is retried. Fetching requires
+the ACN token in `.env`. This local schedule runs only while both Prefect server and
+deployment process are up.
+
+The flow scores each newly validated raw month against the checksum-verified frozen
+reference, exports per-feature PSI and Jensen–Shannon, numeric KS, sample counts,
+missingness and alert state through Pushgateway, then invokes retraining only for an alert
+on the latest available month. The retraining hook uses the existing contract and MLflow
+promotion gates; Prometheus/Grafana alerts are for operator visibility and do not trigger
+a webhook.
+
+### Drift monitoring and evaluation
+
+The Compose stack includes Pushgateway, Prometheus and Grafana. Start all services (use
+an alternate API host port if 8000 is occupied):
+
+```powershell
+$env:EVCHARGE_API_PORT = '8001'
+docker compose up --build -d --wait
+docker compose ps
+```
+
+Grafana is at `http://127.0.0.1:3000` and provisions the `EV Charge Drift Monitoring`
+dashboard with the Prometheus datasource. The local dashboard password is controlled by
+`GRAFANA_ADMIN_PASSWORD` (defaults to `admin` for this loopback-only academic demo).
+Prometheus and Pushgateway are at `http://127.0.0.1:9090` and
+`http://127.0.0.1:9091`. The Prefect process runs on the host and uses
+`PUSHGATEWAY_URL`, defaulting to `http://127.0.0.1:9091`.
+
+The licensed-data evaluation and its limitations are recorded in
+[`docs/drift_evaluation.md`](docs/drift_evaluation.md). Reproduce the declared detector
+study and the separate held-out recovery experiment with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\evaluate_drift.py
+.\.venv\Scripts\python.exe scripts\evaluate_retraining_recovery.py
+```
+
+Both commands require the licensed normalized raw partitions, frozen reference, and a
+raw Production energy model. The detector alerts on April 2020 delivered-energy PSI,
+with zero leave-one-month-out false alarms and a first controlled sensitivity crossing
+at +30% energy shift. The 10% post-shift recovery target was **not** met by either
+chronological retraining experiment; the measured failure is documented rather than
+presented as a successful recovery.
+
 ### Model registry and promotion gate
 
 Each training run registers its best-validation model under a source/target-specific
@@ -421,9 +498,11 @@ ev-charge-mlops/
 │   ├── features/                 Shared builder used by training and serving
 │   ├── models/                   Baselines, temporal evaluation, MLflow
 │   └── fixtures/                 Aggregate profiling, synthetic generation
-├── docs/architecture.md          V1 and proposed V2 diagrams
+├── docs/architecture.md          V1 and implemented V2 diagrams
+├── monitoring/                   Prometheus rules and Grafana provisioning
+├── scripts/                      CI gate and drift/recovery evaluations
 ├── STACK.md                      Tool choices against named alternatives
-├── tests/                        89 tests (container smoke test is opt-in)
+├── tests/                        105 tests (container smoke test is opt-in)
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -469,7 +548,7 @@ support, and no additional native runtime to conflict.
 request at all. `has_user_inputs` makes that explicit and the estimator handles NaN
 natively, so missingness is treated as signal rather than silently filled with a median.
 
-## Current status — V1 (Baseline)
+## Current status — V1 baseline and V2 monitoring
 
 | Component | Status |
 |---|---|
@@ -490,20 +569,20 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Model artefacts and model card | Done |
 | Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 89 tests; container smoke test is opt-in |
+| Test suite | Done — 105 passed, including the live container smoke test |
 | GitHub Actions CI — Ruff, tests, contract, registry promotion gate, Docker build | Done; runs on every push and pull request |
+| Prefect training and monthly monitoring flows, drift scoring and guarded retraining | Done; requires local Prefect server and licensed raw data |
+| Evidently PSI/KS/JS, Prometheus export, Grafana dashboard and alert rules | Done; target PSI alert validated on April 2020 |
+| Drift false-alarm, sensitivity and post-shift recovery evaluation | Done; 0/8 false alarms, +30% first tested PSI crossing; recovery target not met |
 
-## Planned enhancements — V2 (Final)
+## Remaining work — Operations and submission
 
-- **Orchestration** — Prefect flows for `ingest → validate → train → evaluate → register`.
-- **Drift monitoring** — Evidently computing PSI, KS and Jensen-Shannon divergence
-  against a frozen reference window, exported to Prometheus and visualised in Grafana.
-- **Detector validation** — confirm the monitor fires on the March–April 2020 shift
-  within one batch at PSI > 0.2, with zero false alarms across the eight preceding
-  stable months, and measure its sensitivity floor against SDV-injected drift of known
-  magnitude.
-- **Governance** — architecture diagram, `STACK.md` justifying each tool against a named
-  alternative, and a rehearsed rollback procedure.
+- **Governance** — run and record the rollback drill, name alert responders and
+  deployment owners, and complete tool-licence inventory.
+- **Submission** — technical report, executive presentation, final packaging and
+  fresh-clone/fresh-ZIP verification.
+- **Model recovery** — investigate why later chronological retraining windows remain
+  above the pre-shift MAE target (see [`docs/drift_evaluation.md`](docs/drift_evaluation.md)).
 
 The Phase 3 local deployment is intentionally unauthenticated and binds its host ports to
 loopback. It is an evaluation/demo deployment, not a public production endpoint.

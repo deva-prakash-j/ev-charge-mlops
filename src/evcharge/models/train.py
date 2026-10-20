@@ -73,11 +73,21 @@ def load_sessions(settings: Settings, source: str) -> pd.DataFrame:
 def temporal_split(
     frame: pd.DataFrame, split: dict[str, str]
 ) -> dict[str, pd.DataFrame]:
+    required = {"train_end", "validation_end", "post_shift_start", "post_shift_end"}
+    if set(split) != required:
+        raise ConfigError(
+            f"Temporal split must define exactly {sorted(required)}."
+        )
     when = pd.to_datetime(frame["connectionTimeLocal"])
     train_end = pd.Timestamp(split["train_end"])
     validation_end = pd.Timestamp(split["validation_end"])
     post_start = pd.Timestamp(split["post_shift_start"])
     post_end = pd.Timestamp(split["post_shift_end"])
+    if not train_end < validation_end < post_start <= post_end:
+        raise ConfigError(
+            "Temporal split dates must satisfy train_end < validation_end "
+            "< post_shift_start <= post_shift_end."
+        )
 
     # Reset indices so each temporal slice has a clean, contiguous row index.
     return {
@@ -163,7 +173,10 @@ def persist_best_model(
 
 
 def run(
-    settings: Settings, source: str, target: str = "energy"
+    settings: Settings,
+    source: str,
+    target: str = "energy",
+    split_override: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     import mlflow
 
@@ -185,7 +198,8 @@ def run(
     frame = frame[frame[target_column].notna()].reset_index(drop=True)
     logger.info("%d sessions after quarantine (%d removed)", len(frame), len(quarantined))
 
-    splits = temporal_split(frame, model_config["split"])
+    split = split_override or model_config["split"]
+    splits = temporal_split(frame, split)
     for name, part in splits.items():
         logger.info("%-11s %6d rows", name, len(part))
     if splits["train"].empty or splits["validation"].empty:
@@ -316,6 +330,7 @@ def run(
     report = {
         "source": source,
         "target": target_column,
+        "split": split,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_commit": commit,
         "data_sha256": data_hash,
