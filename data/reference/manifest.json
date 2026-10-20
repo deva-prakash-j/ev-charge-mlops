@@ -1,0 +1,40 @@
+{
+  "snapshot_version": "v1",
+  "file": "drift_reference_v1.parquet",
+  "sha256": "679e1bda3d1d4e2ce38a6dac47a7d77c6765db905a8816f00affe69634b4ae25",
+  "logical_sha256": "4b9a365124117664140f17766ef396c206de53d707a47589b7b0d5c497c6f50a",
+  "rows": 19144,
+  "columns": [
+    "connectionTimeLocal",
+    "siteID",
+    "stationID",
+    "clusterID",
+    "kWhRequested",
+    "milesRequested",
+    "minutesAvailable",
+    "WhPerMile",
+    "kWhDelivered",
+    "connectedHours",
+    "declared_delivered_gap_kwh"
+  ],
+  "window": {
+    "start_inclusive": "2019-07-01",
+    "end_exclusive": "2020-03-01"
+  },
+  "rows_by_month": {
+    "2019-07": 2381,
+    "2019-08": 2492,
+    "2019-09": 2379,
+    "2019-10": 2750,
+    "2019-11": 2236,
+    "2019-12": 2139,
+    "2020-01": 2441,
+    "2020-02": 2326
+  },
+  "rows_by_site": {
+    "0001": 11683,
+    "0002": 6526,
+    "0019": 935
+  },
+  "source_extract_manifest_sha256": "ed6b25448cc30335d31a8f2015ef1b26c94d1d4b53fc14f7dbc4c5d582e8f893"
+}

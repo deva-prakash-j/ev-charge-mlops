@@ -60,6 +60,45 @@ def test_batch_and_single_row_transforms_are_identical(sessions, spec, configs):
     pd.testing.assert_frame_equal(batch, row_by_row, check_exact=False, rtol=1e-12)
 
 
+def test_1000_session_api_request_audit_matches_training_path(sessions, spec, configs):
+    """The real request parser/normalizer/feature path matches batch training."""
+    from evcharge.serve.app import request_to_features
+
+    feature_config, data_config = configs
+    audit = sessions.sample(n=1000, random_state=20261020).reset_index(drop=True)
+    training_path = transform(audit, spec, feature_config, data_config)
+
+    request_columns = (
+        "siteID",
+        "connectionTimeLocal",
+        "clusterID",
+        "stationID",
+        "connectionTime",
+        "requestedDeparture",
+        "kWhRequested",
+        "milesRequested",
+        "minutesAvailable",
+        "WhPerMile",
+    )
+    payloads = []
+    for _, row in audit.iterrows():
+        payload = {}
+        for column in request_columns:
+            value = row.get(column)
+            payload[column] = None if pd.isna(value) else value
+        payload["siteID"] = str(payload["siteID"])
+        payloads.append(payload)
+
+    served = request_to_features(payloads, spec, feature_config, data_config)
+    pd.testing.assert_frame_equal(
+        training_path.reset_index(drop=True),
+        served,
+        check_exact=False,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
 def test_row_order_does_not_change_features(sessions, spec, configs):
     """A feature that depended on batch statistics would fail this."""
     feature_config, data_config = configs
@@ -75,7 +114,12 @@ def test_row_order_does_not_change_features(sessions, spec, configs):
 
 def test_post_hoc_columns_are_rejected(configs):
     _, data_config = configs
-    for column in ("kWhDelivered", "disconnectTime", "doneChargingTime"):
+    for column in (
+        "kWhDelivered",
+        "connectedHours",
+        "disconnectTime",
+        "doneChargingTime",
+    ):
         with pytest.raises(LeakageError, match="plug-in time"):
             assert_no_leakage(["arrival_hour", column], data_config)
 
@@ -91,6 +135,19 @@ def test_feature_matrix_excludes_the_target(sessions, spec, configs):
     features, target = build_xy(sessions.head(20), spec, feature_config, data_config)
     assert feature_config["target"] not in features.columns
     assert len(features) == len(target)
+
+
+def test_connected_duration_is_a_target_not_a_feature(sessions, spec, configs):
+    feature_config, data_config = configs
+    rows = sessions.head(20)
+    features, target = build_xy(
+        rows, spec, feature_config, data_config, target="connectedHours"
+    )
+    assert "connectedHours" not in features.columns
+    pd.testing.assert_series_equal(
+        target.reset_index(drop=True),
+        pd.to_numeric(rows["connectedHours"], errors="coerce").reset_index(drop=True),
+    )
 
 
 def test_unknown_category_maps_to_sentinel(sessions, spec, configs):

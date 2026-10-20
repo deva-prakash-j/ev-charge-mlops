@@ -18,13 +18,17 @@ def _frame(**overrides) -> pd.DataFrame:
         "sessionID": ["a", "b", "c"],
         "siteID": ["0001", "0001", "0002"],
         "clusterID": ["0001", "0001", "0002"],
-        "stationID": ["S1", "S2", "S3"],
+        "stationID": ["0001-S000", "0001-S001", "0002-S000"],
         "connectionTime": pd.to_datetime(
-            ["2020-01-01", "2020-01-02", "2020-01-03"], utc=True
+            ["2020-01-01 08:00", "2020-01-02 08:00", "2020-01-03 08:00"], utc=True
         ),
         "disconnectTime": pd.to_datetime(
-            ["2020-01-01", "2020-01-02", "2020-01-03"], utc=True
+            ["2020-01-01 12:00", "2020-01-02 12:00", "2020-01-03 12:00"], utc=True
         ),
+        "doneChargingTime": pd.to_datetime(
+            ["2020-01-01 10:00", "2020-01-02 10:00", "2020-01-03 10:00"], utc=True
+        ),
+        "kWhRequested": [12.0, 12.0, 8.0],
         "kWhDelivered": [10.0, 12.0, 8.0],
         "timezone": ["America/Los_Angeles"] * 3,
         "connectedHours": [4.0, 5.0, 6.0],
@@ -94,3 +98,52 @@ def test_mixed_type_site_id_is_a_blocking_failure(spec, tmp_path):
     assert report["passed"] is False
     failed = {c["expectation"] for c in report["blocking_failures"]}
     assert "expect_column_values_to_be_in_set" in failed
+
+
+def test_station_ids_outside_the_known_namespace_are_blocked(spec, tmp_path):
+    from evcharge.config import Secret, Settings
+
+    settings = Settings(
+        acn_api_token=Secret("x"), data_dir=tmp_path, artifacts_dir=tmp_path
+    )
+    report = validate(_frame(stationID=["2-39-123-23", "0001-S001", "0002-S000"]),
+                      spec, settings, "unit")
+    assert report["passed"] is False
+    assert any(
+                          check["expectation"] == "expect_station_id_in_site_domain"
+        and not check["success"]
+        for check in report["blocking_failures"]
+    )
+
+
+def test_contract_reports_timestamp_and_energy_pair_checks(spec):
+    from evcharge.validation.contract import run_expectations
+
+    outcome = run_expectations(_frame(), spec)
+    pair_checks = [
+        check for check in outcome["checks"]
+        if check["expectation"] == "expect_column_pair_values_a_to_be_greater_than_b"
+    ]
+    assert len(pair_checks) == 2
+    assert all(check["success"] for check in pair_checks)
+    assert any(
+        check["expectation"] == "expect_declared_energy_ratio_to_be_plausible"
+        and check["success"]
+        for check in outcome["checks"]
+    )
+
+
+def test_gross_declared_energy_mismatches_fail_the_contract(spec):
+    from evcharge.validation.contract import run_expectations
+
+    outcome = run_expectations(
+        _frame(kWhRequested=[1.0, 1.0, 100.0], kWhDelivered=[10.0, 12.0, 8.0]),
+        spec,
+    )
+    energy_check = next(
+        check
+        for check in outcome["checks"]
+        if check["expectation"] == "expect_declared_energy_ratio_to_be_plausible"
+    )
+    assert not energy_check["success"]
+    assert energy_check["unexpected_count"] == 2

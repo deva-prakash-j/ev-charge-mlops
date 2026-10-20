@@ -21,14 +21,16 @@ Checked on <https://ev.caltech.edu> on 2026-10-20:
 
 | Copy | Real ACN-Data records |
 |---|---|
-| Public GitHub repository | **Not included.** Only the extract manifest (`data/raw/manifest.json`: row counts and SHA-256 hashes), the retrieval code and a synthetic fixture are published. |
-| upGrad submission (ZIP / platform upload) | **Included unmodified** in `data/raw/`, solely so evaluators can reproduce the licensed-data results without registering. |
+| Public GitHub repository | **Not included.** Only data-free manifests (`data/raw/manifest.json` and `data/reference/manifest.json`: counts and hashes), retrieval code and a synthetic fixture are published. |
+| upGrad submission (ZIP / platform upload) | **Included unmodified** in `data/raw/`, plus the versioned derived drift reference in `data/reference/`, solely so evaluators can reproduce the results without registering. |
 
 The evaluation copy is shared for educational assessment only, which is within the
 publisher's stated purpose and matches the accepted proposal ("no redistribution beyond
 the … snapshot submitted to upGrad solely for evaluation"). It ships the extract as
-retrieved rather than a derived snapshot, so the pipeline can be reproduced from its
-first stage. The records keep the publisher's pseudonymous `userID`.
+retrieved rather than only a derived snapshot, so the pipeline can be reproduced from its
+first stage. The drift reference is derived from the 2019-07 through 2020-02 window and
+omits session and user identifiers. The original extract keeps the publisher's
+pseudonymous `userID`.
 
 The public repository stays data-free because publishing there would let anyone download
 the records without registering, bypassing the publisher's usage tracking and the

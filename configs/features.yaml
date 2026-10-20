@@ -1,10 +1,11 @@
-# Feature specification for the plug-in-time model.
+# Feature specification shared by the plug-in-time energy and dwell models.
 #
 # Every column listed here must be knowable at the moment the vehicle plugs in.
 # The builder cross-checks this against post_hoc_columns in data.yaml and raises
 # if anything post-hoc leaks in.
 
 target: kWhDelivered
+dwell_target: connectedHours
 
 timestamp_column: connectionTimeLocal
 
@@ -34,6 +35,5 @@ derived:
 # Unseen categories at serve time map to this code rather than failing.
 unknown_category_code: -1
 
-# Deferred to V2: rolling site occupancy at arrival. It needs a point-in-time
-# join against session history, and computing it from the batch would make
-# predictions depend on which other rows happen to be scored together.
+# Rolling site occupancy is deliberately deferred; see docs/feature_specification.md
+# for the point-in-time join requirements and why batch-derived occupancy leaks.

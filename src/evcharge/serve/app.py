@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict
 
 from evcharge.config import PROJECT_ROOT, load_config
 from evcharge.features.build import FeatureSpec, transform
+from evcharge.ingest.normalise import normalise_identifier
 
 
 class PredictionRequest(BaseModel):
@@ -31,6 +32,28 @@ class PredictionRequest(BaseModel):
     milesRequested: float | None = None
     minutesAvailable: float | None = None
     WhPerMile: float | None = None
+
+
+def request_to_features(
+    payload: PredictionRequest | dict[str, Any] | list[dict[str, Any]],
+    spec: FeatureSpec,
+    feature_config: dict[str, Any],
+    data_config: dict[str, Any],
+) -> pd.DataFrame:
+    """Apply request validation and ingest identifier normalization before encoding."""
+    payloads = payload if isinstance(payload, list) else [payload]
+    records = []
+    for item in payloads:
+        request = (
+            item
+            if isinstance(item, PredictionRequest)
+            else PredictionRequest.model_validate(item)
+        )
+        record = request.model_dump()
+        for column in ("siteID", "clusterID", "stationID"):
+            record[column] = normalise_identifier(record.get(column))
+        records.append(record)
+    return transform(pd.DataFrame(records), spec, feature_config, data_config)
 
 
 def create_app(
@@ -75,9 +98,8 @@ def create_app(
         if not hasattr(request.app.state, "model"):
             raise HTTPException(status_code=503, detail="Model is not loaded.")
 
-        frame = pd.DataFrame([payload.model_dump()])
-        features = transform(
-            frame,
+        features = request_to_features(
+            payload,
             request.app.state.feature_spec,
             request.app.state.feature_config,
             request.app.state.data_config,

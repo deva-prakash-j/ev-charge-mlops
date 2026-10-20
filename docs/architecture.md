@@ -8,7 +8,7 @@ flowchart LR
   B -->|pii_audit| E[artifacts/pii_audit.json]
   B -->|normalise| C[(data/interim<br/>monthly Parquet)]
   S[(data/sample<br/>synthetic fixture)] -->|normalise| C
-  C -->|contract| D{Great Expectations<br/>12 expectations}
+  C -->|contract| D{Data contract<br/>16 GE + custom checks}
   D -->|breach| X[Pipeline halts]
   D -->|implausible rows| Q[(data/quarantine<br/>with reasons)]
   D -->|clean| F[features.build<br/>fit / transform]
@@ -16,6 +16,7 @@ flowchart LR
   G --> H[Mean · Ridge · HistGradientBoosting]
   H --> I[(MLflow<br/>params, metrics, git SHA, data hash)]
   H --> J[artifacts/training_*.json]
+  C -->|freeze 2019-07..2020-02| R[(data/reference<br/>v1 + manifest)]
   H --> K[FastAPI<br/>/health · /predict]
 ```
 
@@ -64,17 +65,20 @@ flowchart TB
 
 | V2 requirement | V1 foundation |
 |---|---|
-| Train/serve parity | `features.build` is already the single definition, with a parity test |
+| Train/serve parity | `features.build` is the single definition; a fixed 1,000-session audit exercises request validation and normalization |
 | Local prediction API | FastAPI loads the saved estimator and fitted feature spec |
 | Promotion gate | Temporal evaluation and baseline floors already produce the comparison metric |
-| Drift reference window | `reference_window_start` is already declared in `configs/data.yaml` |
+| Drift reference window | Versioned v1 snapshot with row counts and file/logical hashes; real rows stay out of public Git |
+| Drift hypotheses | Predeclared and testable in `docs/drift_hypotheses.md` |
 | Reproducible retraining | Partition replacement is rollback-safe; every run logs its input data hash |
 | Detector ground truth | The March–April 2020 collapse is present, dated and measured |
 
 ### Drift detection design
 
-A frozen reference window (2019-07 to 2020-02) is compared against each incoming monthly
-batch on both input features and the prediction distribution.
+A frozen reference window (2019-07 to 2020-02) is built by
+`python -m evcharge.validation.reference --source raw` and compared against each
+incoming monthly batch on both input features and the prediction distribution. Its
+data-free manifest is public; the snapshot records stay in the upGrad evaluation copy.
 
 | Signal | Metric | Threshold |
 |---|---|---|
@@ -83,9 +87,10 @@ batch on both input features and the prediction distribution.
 | Prediction distribution | Jensen-Shannon | reported alongside PSI |
 
 The detector is then **validated rather than assumed**: it must fire on the known
-March–April 2020 shift within one monthly batch, produce zero false alarms across the eight
-preceding stable months, and its sensitivity floor is measured against SDV-generated
-batches carrying injected drift of known magnitude.
+March–April 2020 shift within one monthly batch. False alarms are measured out-of-sample;
+the eight months forming the reference cannot be scored against that same reference and
+counted as independent evidence. Sensitivity is measured against batches carrying
+controlled drift of known magnitude. See [`drift_hypotheses.md`](drift_hypotheses.md).
 
 ### Rollback
 
@@ -99,10 +104,9 @@ available — the failure mode called out in the Stage-Pitfalls guide.
 
 ## Known gaps
 
-- **Rolling site occupancy** is not a feature. It requires a point-in-time join against
-  session history; deriving it from the batch would make a prediction depend on which other
-  rows happen to be scored alongside it, breaking the parity guarantee.
-- **Connected-duration prediction** is specified but not yet modelled; V1 covers
-  `kWhDelivered` only.
+- **Rolling site occupancy** remains deliberately deferred. It requires a point-in-time
+  join against session history; deriving it from the batch would make a prediction depend
+  on which other rows happen to be scored alongside it. The deferral and feature rationale
+  are documented in [`feature_specification.md`](feature_specification.md).
 - **The fixture's generative process is log-linear**, so tree ensembles have less to exploit
   there than on real data. Fixture metrics verify the pipeline, not model quality.

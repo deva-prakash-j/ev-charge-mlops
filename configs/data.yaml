@@ -36,6 +36,7 @@ plug_in_time_columns:
 post_hoc_columns:
   - disconnectTime
   - doneChargingTime
+  - connectedHours
   - kWhDelivered
   - userInputs_count
 
@@ -59,3 +60,4 @@ split:
   # Temporal, never random: a random split leaks across the 2020 regime change.
   strategy: temporal
   reference_window_start: "2019-07-01"
+  reference_window_end_exclusive: "2020-03-01"

@@ -9,12 +9,15 @@
 # DATA_LICENCE.md); the upGrad submission ZIP includes data/raw/ for evaluation.
 # Ignore data/ contents rather than the directory, so the synthetic fixture in
 # data/sample/ can be re-included (git cannot un-ignore inside an ignored dir).
-# The extract manifest holds only row counts and hashes, so it is published.
+# Data manifests hold counts and hashes only, so they are published.
 data/*
 !data/sample/
 !data/raw/
 data/raw/*
 !data/raw/manifest.json
+!data/reference/
+data/reference/*
+!data/reference/manifest.json
 
 # ML artifacts
 mlruns/
@@ -25,6 +28,8 @@ great_expectations/uncommitted/
 # Models trained on the licensed extract are not published; the sample model is,
 # so an evaluator has a concrete artefact without running training first.
 models/raw/
+models/raw_dwell/
+models/sample_dwell/
 !models/sample/model.joblib
 
 # Generated run outputs. pii_audit.json is kept deliberately: it is the evidence

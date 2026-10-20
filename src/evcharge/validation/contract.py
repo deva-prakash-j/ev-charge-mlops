@@ -117,9 +117,87 @@ def run_expectations(frame: pd.DataFrame, spec: dict[str, Any]) -> dict[str, Any
             }
         )
 
+    custom_checks = []
+    station_domains = spec.get("station_id_domains", {})
+    if station_domains:
+        sites = frame["siteID"].astype("string")
+        stations = frame["stationID"].astype("string")
+        valid_station = pd.Series(False, index=frame.index)
+        for site, pattern in station_domains.items():
+            valid_station |= sites.eq(site).fillna(False) & stations.str.fullmatch(
+                pattern, na=False
+            ).fillna(False)
+        unexpected_count = int((~valid_station).sum())
+        custom_checks.append(
+            {
+                "expectation": "expect_station_id_in_site_domain",
+                "column": "stationID",
+                "kwargs": {"site_domains": station_domains},
+                "severity": spec.get("station_id_domain_severity", "block"),
+                "success": unexpected_count == 0,
+                "unexpected_count": unexpected_count,
+                "unexpected_percent": (
+                    100.0 * unexpected_count / len(frame) if len(frame) else 0.0
+                ),
+            }
+        )
+
+    energy_rule = spec.get("declared_energy_plausibility")
+    if energy_rule:
+        requested = pd.to_numeric(frame["kWhRequested"], errors="coerce")
+        delivered = pd.to_numeric(frame["kWhDelivered"], errors="coerce")
+        eligible = requested.notna() & delivered.notna()
+        plausible = (requested > 0) & (
+            delivered
+            <= requested * energy_rule["max_delivered_to_requested_ratio"]
+        )
+        plausible |= (requested == 0) & (delivered == 0)
+        unexpected_count = int((eligible & ~plausible).sum())
+        eligible_count = int(eligible.sum())
+        plausible_fraction = (
+            (eligible_count - unexpected_count) / eligible_count
+            if eligible_count
+            else 0.0
+        )
+        custom_checks.append(
+            {
+                "expectation": "expect_declared_energy_ratio_to_be_plausible",
+                "column": "kWhRequested",
+                "kwargs": {
+                    "max_delivered_to_requested_ratio":
+                        energy_rule["max_delivered_to_requested_ratio"],
+                    "minimum_plausible_fraction":
+                        energy_rule["minimum_plausible_fraction"],
+                    "excluded_missing_requests": True,
+                },
+                "severity": energy_rule.get("severity", "block"),
+                "success": (
+                    eligible_count > 0
+                    and plausible_fraction >= energy_rule["minimum_plausible_fraction"]
+                ),
+                "unexpected_count": unexpected_count,
+                "unexpected_percent": (
+                    100.0 * unexpected_count / eligible_count
+                    if eligible_count
+                    else 100.0
+                ),
+            }
+        )
+
+    checks.extend(custom_checks)
+    result_statistics = dict(result.statistics)
+    result_statistics["evaluated_expectations"] += len(custom_checks)
+    result_statistics["successful_expectations"] += sum(
+        bool(check["success"]) for check in custom_checks
+    )
+    result_statistics["unsuccessful_expectations"] += sum(
+        not bool(check["success"]) for check in custom_checks
+    )
+    custom_success = all(check["success"] for check in custom_checks)
+
     return {
-        "success": bool(result.success),
-        "statistics": dict(result.statistics),
+        "success": bool(result.success and custom_success),
+        "statistics": result_statistics,
         "checks": checks,
     }
 

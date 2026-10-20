@@ -1,4 +1,4 @@
-"""Baseline training with temporal splits and MLflow tracking.
+"""Energy and dwell-time training with temporal splits and MLflow tracking.
 
 Three models are trained in order of increasing complexity -- mean, ridge,
 HistGradientBoosting -- so the gain from the candidate is measured against a
@@ -6,7 +6,7 @@ floor rather than asserted. Every run logs parameters, metrics, the git commit
 and the input data hash, so any prediction is traceable to the code and data
 that produced it.
 
-Usage:  python -m evcharge.models.train --source sample
+Usage:  python -m evcharge.models.train --source sample [--target energy|dwell]
 """
 
 from __future__ import annotations
@@ -112,6 +112,7 @@ def build_models(config: dict[str, Any]) -> dict[str, Any]:
 def persist_best_model(
     settings: Settings,
     source: str,
+    target: str,
     name: str,
     estimator: Any,
     spec: Any,
@@ -124,17 +125,24 @@ def persist_best_model(
     """
     import joblib
 
-    target = settings.models_dir / source
-    target.mkdir(parents=True, exist_ok=True)
+    model_dir = settings.models_dir / (
+        source if target == "energy" else f"{source}_{target}"
+    )
+    model_dir.mkdir(parents=True, exist_ok=True)
 
-    joblib.dump(estimator, target / "model.joblib")
-    spec.save(target / "feature_spec.json")
-    (target / "metrics.json").write_text(
+    joblib.dump(estimator, model_dir / "model.joblib")
+    spec.save(model_dir / "feature_spec.json")
+    (model_dir / "metrics.json").write_text(
         json.dumps(metrics, indent=2, default=str) + "\n", encoding="utf-8"
     )
-    (target / "MODEL_CARD.md").write_text(
-        f"# Model card - {name} ({source})\n\n"
-        f"- Target: kWhDelivered (kWh delivered in a charging session)\n"
+    target_description = (
+        "kWhDelivered (energy delivered in a charging session)"
+        if target == "energy"
+        else "connectedHours (elapsed connection-to-disconnection hours)"
+    )
+    (model_dir / "MODEL_CARD.md").write_text(
+        f"# Model card - {name} ({source}, {target})\n\n"
+        f"- Target: {target_description}\n"
         f"- Trained: {datetime.now(timezone.utc).isoformat(timespec='seconds')}\n"
         f"- Git commit: {git_commit()[:12]}\n"
         f"- Features: {len(spec.feature_names)}\n"
@@ -146,25 +154,35 @@ def persist_best_model(
         "```python\n"
         "import joblib\n"
         "from evcharge.features.build import FeatureSpec\n"
-        f"model = joblib.load('models/{source}/model.joblib')\n"
-        f"spec = FeatureSpec.load('models/{source}/feature_spec.json')\n"
+        f"model = joblib.load('models/{model_dir.name}/model.joblib')\n"
+        f"spec = FeatureSpec.load('models/{model_dir.name}/feature_spec.json')\n"
         "```\n",
         encoding="utf-8",
     )
-    return target
+    return model_dir
 
 
-def run(settings: Settings, source: str) -> dict[str, Any]:
+def run(
+    settings: Settings, source: str, target: str = "energy"
+) -> dict[str, Any]:
     import mlflow
+
+    if target not in {"energy", "dwell"}:
+        raise ConfigError(f"Unsupported target {target!r}; choose energy or dwell.")
 
     data_config = load_config("data")
     feature_config = load_config("features")
     model_config = load_config("model")
     contract_spec = load_config("contract")
+    target_column = (
+        feature_config["target"]
+        if target == "energy"
+        else feature_config["dwell_target"]
+    )
 
     frame = load_sessions(settings, source)
     frame, quarantined = apply_quarantine(frame, contract_spec["quarantine_rules"])
-    frame = frame[frame[feature_config["target"]].notna()].reset_index(drop=True)
+    frame = frame[frame[target_column].notna()].reset_index(drop=True)
     logger.info("%d sessions after quarantine (%d removed)", len(frame), len(quarantined))
 
     splits = temporal_split(frame, model_config["split"])
@@ -185,15 +203,20 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
     spec = fit_features(splits["train"], feature_config, data_config)
 
     prepared = {
-        name: build_xy(part, spec, feature_config, data_config)
+        name: build_xy(part, spec, feature_config, data_config, target=target_column)
         for name, part in splits.items()
         if not part.empty
     }
     x_train, y_train = prepared["train"]
     y_train = np.ascontiguousarray(y_train.to_numpy(dtype="float64"))
 
-    mlflow.set_tracking_uri((settings.artifacts_dir.parent / model_config["mlflow"]["tracking_uri"]).as_uri())
-    mlflow.set_experiment(model_config["mlflow"]["experiment"])
+    mlflow.set_tracking_uri(
+        (settings.artifacts_dir.parent / model_config["mlflow"]["tracking_uri"]).as_uri()
+    )
+    experiment = model_config["mlflow"]["experiment"]
+    if target == "dwell":
+        experiment = f"{experiment}-dwell"
+    mlflow.set_experiment(experiment)
 
     commit = git_commit()
     data_hash = frame_hash(frame)
@@ -209,6 +232,7 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
                 {
                     "model": name,
                     "source": source,
+                    "target": target_column,
                     "git_commit": commit,
                     "data_sha256": data_hash[:16],
                     "n_features": x_train.shape[1],
@@ -224,11 +248,11 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
                 )
 
             run_metrics: dict[str, Any] = {}
-            for split_name, (features, target) in prepared.items():
+            for split_name, (features, target_values) in prepared.items():
                 predictions = estimator.predict(features)
                 sliced = evaluate_slices(
                     splits[split_name],
-                    target,
+                    target_values,
                     np.asarray(predictions),
                     model_config["evaluation"]["breakdowns"],
                 )
@@ -237,7 +261,11 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
                     if isinstance(value, (int, float)) and np.isfinite(value):
                         mlflow.log_metric(f"{split_name}_{metric}", float(value))
 
-            spec_path = settings.artifacts_dir / f"feature_spec_{source}.json"
+            spec_path = settings.artifacts_dir / (
+                f"feature_spec_{source}.json"
+                if target == "energy"
+                else f"feature_spec_{target}_{source}.json"
+            )
             spec.save(spec_path)
             mlflow.log_artifact(str(spec_path))
 
@@ -278,12 +306,13 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
         results, key=lambda m: results[m]["validation"]["overall"]["mae"]
     )
     model_dir = persist_best_model(
-        settings, source, best, fitted[best], spec, results[best]
+        settings, source, target, best, fitted[best], spec, results[best]
     )
     logger.info("best model %s -> %s", best, model_dir)
 
     report = {
         "source": source,
+        "target": target_column,
         "trained_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_commit": commit,
         "data_sha256": data_hash,
@@ -294,7 +323,12 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
         "results": results,
     }
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
-    (settings.artifacts_dir / f"training_{source}.json").write_text(
+    report_name = (
+        f"training_{source}.json"
+        if target == "energy"
+        else f"training_{target}_{source}.json"
+    )
+    (settings.artifacts_dir / report_name).write_text(
         json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8"
     )
     return report
@@ -303,6 +337,12 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Train baseline models.")
     parser.add_argument("--source", choices=("sample", "raw"), default="sample")
+    parser.add_argument(
+        "--target",
+        choices=("energy", "dwell"),
+        default="energy",
+        help="Predict delivered energy or elapsed connected duration.",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)-7s %(message)s")
@@ -311,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         settings = get_settings()
-        report = run(settings, args.source)
+        report = run(settings, args.source, args.target)
     except ConfigError as exc:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 2
@@ -328,7 +368,12 @@ def main(argv: list[str] | None = None) -> int:
         key=lambda m: report["results"][m]["validation"]["overall"]["mae"],
     )
     print(f"\n[ok]   best on validation MAE: {best}")
-    print(f"[ok]   report -> {settings.artifacts_dir / f'training_{args.source}.json'}")
+    report_name = (
+        f"training_{args.source}.json"
+        if args.target == "energy"
+        else f"training_{args.target}_{args.source}.json"
+    )
+    print(f"[ok]   report -> {settings.artifacts_dir / report_name}")
     return 0
 
 

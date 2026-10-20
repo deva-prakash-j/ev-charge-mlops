@@ -14,6 +14,8 @@ required_columns:
   - stationID
   - connectionTime
   - disconnectTime
+  - doneChargingTime
+  - kWhRequested
   - kWhDelivered
   - timezone
   - connectedHours
@@ -56,6 +58,27 @@ expectations:
     kwargs:
       column: timezone
       value_set: ["America/Los_Angeles"]
+    severity: block
+
+  # Historical feed exceptions are retained and reported: >=99% of complete
+  # pairs must be ordered connection <= done-charging, and >=90% must also
+  # finish by disconnect. Missing doneChargingTime is ignored.
+  - type: expect_column_pair_values_A_to_be_greater_than_B
+    kwargs:
+      column_A: doneChargingTime
+      column_B: connectionTime
+      or_equal: true
+      mostly: 0.99
+      ignore_row_if: either_value_is_missing
+    severity: block
+
+  - type: expect_column_pair_values_A_to_be_greater_than_B
+    kwargs:
+      column_A: disconnectTime
+      column_B: doneChargingTime
+      or_equal: true
+      mostly: 0.90
+      ignore_row_if: either_value_is_missing
     severity: block
 
   # Tolerant thresholds: a few extreme rows are expected and are quarantined
@@ -106,3 +129,17 @@ quarantine_rules:
     op: gt
     value: 10080
     reason: declared availability exceeds one week
+
+# Station namespaces are site-specific. The synthetic fixture uses its own
+# site-prefixed namespace; raw identifiers must retain the ACN station prefix.
+station_id_domains:
+  "0001": "^(?:1-1-\\d+-\\d+|0001-S\\d{3})$"
+  "0002": "^(?:2-39-\\d+-\\d+|0002-S\\d{3})$"
+  "0019": "^(?:19-102-\\d+-\\d+|0019-S\\d{3})$"
+
+# Historical requests are not strict caps. Flag gross mismatches while
+# allowing normal delivered/request variation and excluding missing requests.
+declared_energy_plausibility:
+  max_delivered_to_requested_ratio: 3.0
+  minimum_plausible_fraction: 0.995
+  severity: block

@@ -3,7 +3,13 @@
 import pytest
 
 from evcharge.config import Secret, Settings
-from evcharge.pipeline import DEFAULT_STAGES, STAGES, StageFailure, run_pipeline
+from evcharge.pipeline import (
+    DEFAULT_STAGES,
+    STAGES,
+    StageFailure,
+    run_pipeline,
+    stage_train,
+)
 
 
 @pytest.fixture
@@ -84,3 +90,30 @@ def test_successful_run_records_every_stage(settings, monkeypatch):
     assert summary["passed"] is True
     assert list(summary["stages"]) == list(DEFAULT_STAGES)
     assert all(v["status"] == "ok" for v in summary["stages"].values())
+
+
+def test_train_stage_builds_energy_and_dwell_models(settings, monkeypatch):
+    from evcharge.models import train
+
+    calls = []
+
+    def fake_run(_settings, source, target="energy"):
+        calls.append((source, target))
+        return {
+            "rows": {"train": 3, "validation": 2, "post_shift": 1},
+            "git_commit": "abcdef0123456789",
+            "results": {
+                "baseline_mean": {"validation": {"overall": {"mae": 3.0}}},
+                "hist_gradient_boosting": {
+                    "validation": {"overall": {"mae": 2.0}}
+                },
+            },
+        }
+
+    monkeypatch.setattr(train, "run", fake_run)
+    report = stage_train(settings, "raw")
+
+    assert calls == [("raw", "energy"), ("raw", "dwell")]
+    assert report["best_model"] == "hist_gradient_boosting"
+    assert report["best_dwell_model"] == "hist_gradient_boosting"
+    assert report["dwell_validation_mae"]["baseline_mean"] == 3.0

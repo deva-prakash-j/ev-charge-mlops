@@ -1,10 +1,10 @@
 # EV Charge-Session MLOps Pipeline
 
-Drift-aware MLOps pipeline for electric-vehicle charge-session energy prediction.
+Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-time prediction.
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-66%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-78%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -72,7 +72,8 @@ The data is therefore shared differently in the two copies of this project:
 | | Public GitHub repository | upGrad submission (ZIP / upload) |
 |---|---|---|
 | Real ACN-Data records | Not included | Included unmodified in `data/raw/`, for evaluation only |
-| Extract manifest (row counts, SHA-256) | `data/raw/manifest.json` | Same file |
+| Extract and reference manifests (counts, SHA-256) | `data/raw/manifest.json`, `data/reference/manifest.json` | Same files |
+| Frozen drift reference | Not included | Generated in `data/reference/` from the licensed extract |
 | Synthetic fixture | `data/sample/` | Same files |
 
 See [`DATA_LICENCE.md`](DATA_LICENCE.md) for the publisher's terms and the conditions
@@ -137,6 +138,22 @@ invisible to conventional monitoring.
 Top features by permutation importance on validation: `kWhRequested` (2.54),
 `milesRequested` (1.58), `declared_duration_minutes` (0.48), `siteID` (0.22).
 
+### Connected-duration model
+
+The same 66,743 post-quarantine sessions and temporal boundaries are used to predict
+`connectedHours` (hours from connection to disconnect). MAE is in hours:
+
+| Model | Validation MAE | Post-shift MAE |
+|---|---:|---:|
+| Mean | 3.074 | 2.835 |
+| Ridge | 1.982 | 2.393 |
+| **HistGradientBoosting** | **1.659** | **2.324** |
+
+This is a separate target, not a feature: the dwell model uses only the same plug-in-time
+fields as the energy model. The synthetic demo trains the same target but its scores are
+not evidence of licensed-data model quality. Full-data evaluation is recorded in
+`artifacts/training_dwell_raw.json` in the upGrad copy.
+
 ## Installation
 
 Requires Python 3.11.
@@ -174,9 +191,10 @@ One command runs the whole pipeline against the committed synthetic fixture:
 ```
 
 ```
-normalise  ok    0.68s   2,579 rows, 3 sites, 2019-07..2020-06
-contract   ok    3.95s   2,579 clean, 0 quarantined, 12/12 expectations passed
-train      ok   12.37s   best: hist_gradient_boosting (validation MAE 6.342)
+normalise  ok    2,579 rows, 3 sites, 2019-07..2020-06
+contract   ok    2,579 clean, 0 quarantined, 16/16 checks passed
+train      ok    energy best: hist_gradient_boosting; dwell best: hist_gradient_boosting
+                 (synthetic validation MAE: 6.342 kWh; 3.700 hours)
 ```
 
 No API token, no manual edits. Stages can also be run individually:
@@ -198,7 +216,8 @@ Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
 ### Model artefacts
 
-Training writes the selected model to `models/<source>/`:
+Training writes the selected energy model to `models/<source>/` and the
+connected-duration model to `models/<source>_dwell/`:
 
 | File | Purpose |
 |---|---|
@@ -210,6 +229,18 @@ Training writes the selected model to `models/<source>/`:
 The model and its feature spec are saved together deliberately — the estimator alone
 cannot reproduce its own input encoding. `models/sample/` is committed so an evaluator has
 a concrete artefact without running training first; `models/raw/` is gitignored.
+
+The trainer also supports connected-duration prediction:
+
+```powershell
+.\.venv\Scripts\python.exe -m evcharge.models.train --source raw --target dwell
+```
+
+This predicts `connectedHours` from the same plug-in-time feature set and writes
+`models/raw_dwell/` plus `artifacts/training_dwell_raw.json`. Duration and other
+post-session measurements never enter the feature matrix. See
+[`docs/feature_specification.md`](docs/feature_specification.md) for the complete feature
+rationale and the documented occupancy deferral.
 
 ```python
 import joblib
@@ -242,12 +273,16 @@ Check the files against the manifest, then run the pipeline without `--fetch`:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests/test_fetch_sessions.py -q -rs   # SHA-256, bytes, sessions vs data/raw/manifest.json
 .\.venv\Scripts\python.exe -m evcharge.pipeline --source raw
+.\.venv\Scripts\python.exe -m evcharge.validation.reference --source raw
 ```
 
 `artifacts/training_raw.json` then reports `data_sha256` and `rows`; they should equal
 `training_frame_sha256` and `split_rows` in
 [`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json), and the
 headline metrics follow from them.
+The reference command creates the frozen 2019-07..2020-02 drift snapshot and verifies its
+metadata in `data/reference/manifest.json`. The snapshot file itself is included only in
+the upGrad evaluation copy.
 
 ### Full path — requires an ACN-Data token
 
@@ -280,13 +315,15 @@ ev-charge-mlops/
 │   └── sample_profile.yaml       Aggregate statistics for fixture generation
 ├── data/
 │   ├── sample/                   Synthetic fixture (committed)
-│   └── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored except
-│                                 raw/manifest.json; raw/ is in the upGrad ZIP)
+│   ├── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored except
+│   │                             raw/manifest.json; raw/ is in the upGrad ZIP)
+│   └── reference/                Frozen drift window; manifest tracked, data in ZIP only
 ├── notebooks/
 │   └── 01_data_understanding.ipynb   EDA; imports src/, never redefines logic
 ├── models/
 │   ├── sample/                   Trained model, feature spec, metrics, model card
-│   └── raw/                      Trained on licensed data (gitignored)
+│   ├── raw/                      Energy model trained on licensed data (gitignored)
+│   └── raw_dwell/                Dwell model trained on licensed data (gitignored)
 ├── src/evcharge/
 │   ├── config.py                 Settings, secret handling, YAML loading
 │   ├── pipeline.py               Single entry point: normalise → contract → train
@@ -297,7 +334,7 @@ ev-charge-mlops/
 │   └── fixtures/                 Aggregate profiling, synthetic generation
 ├── docs/architecture.md          V1 and proposed V2 diagrams
 ├── STACK.md                      Tool choices against named alternatives
-├── tests/                        60 tests
+├── tests/                        78 tests
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -311,6 +348,7 @@ The contract was built against defects actually present in the feed, not invente
 | `siteID` emitted as both int `2` and str `"0002"` | 2,081 rows | Coerced; blocking expectation |
 | `clusterID` mixed int/str | crashed Parquet write | Coerced; blocking expectation |
 | Sessions of 245h and 214h | 2 rows | Quarantined with reason, not dropped |
+| Done-charging timestamp order, station namespace and declared/delivered plausibility | 16 data-contract checks total | Site-specific identifier domains; timestamp order checked on complete pairs with documented historical tolerances; gross energy ratios over 3:1 must be below 0.5% |
 
 Quarantining rather than dropping keeps upstream defects visible — a 10-day session
 delivering 1.48 kWh is a real signal, not noise to be silently discarded.
@@ -349,19 +387,19 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Data acquisition from ACN-Data API | Done |
 | PII audit with structure-aware detection | Done |
 | Normalisation, local-time monthly partitioning | Done |
-| Great Expectations data contract + quarantine | Done |
+| Data contract (16 checks) + quarantine | Done |
 | Synthetic fixture for credential-free execution | Done |
 | Configuration layer | Done |
-| Shared feature module with parity and leakage tests | Done |
+| Shared feature module with the 1,000-session API parity audit and leakage tests | Done |
 | Baseline models and temporal evaluation | Done |
 | MLflow experiment tracking | Done |
 | Single-command pipeline entry point | Done |
 | Local FastAPI prediction and health endpoints | Done |
 | EDA notebook | Done |
 | Model artefacts and model card | Done |
-| Connected-duration (dwell-time) prediction | In scope; Phase 1 work |
+| Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 66 tests |
+| Test suite | Done — 78 tests |
 
 ## Planned enhancements — V2 (Final)
 

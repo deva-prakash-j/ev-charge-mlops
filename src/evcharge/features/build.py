@@ -165,7 +165,9 @@ def build_xy(
     spec: FeatureSpec,
     feature_config: dict[str, Any],
     data_config: dict[str, Any],
+    target: str | None = None,
 ) -> tuple[pd.DataFrame, pd.Series]:
     features = transform(frame, spec, feature_config, data_config)
-    target = pd.to_numeric(frame[feature_config["target"]], errors="coerce")
-    return features, target
+    target_column = target or feature_config["target"]
+    values = pd.to_numeric(frame[target_column], errors="coerce")
+    return features, values

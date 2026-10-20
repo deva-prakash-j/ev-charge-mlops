@@ -69,15 +69,25 @@ def stage_train(settings: Settings, source: str) -> dict[str, Any]:
     from evcharge.models.train import run as train_run
 
     report = train_run(settings, source)
+    dwell_report = train_run(settings, source, target="dwell")
     validation = {
         model: splits["validation"]["overall"]["mae"]
         for model, splits in report["results"].items()
     }
     best = min(validation, key=validation.get)
+    dwell_validation = {
+        model: splits["validation"]["overall"]["mae"]
+        for model, splits in dwell_report["results"].items()
+    }
+    best_dwell = min(dwell_validation, key=dwell_validation.get)
     return {
         "rows": report["rows"],
         "validation_mae": {k: round(v, 4) for k, v in validation.items()},
         "best_model": best,
+        "dwell_validation_mae": {
+            k: round(v, 4) for k, v in dwell_validation.items()
+        },
+        "best_dwell_model": best_dwell,
         "git_commit": report["git_commit"][:12],
     }
 
