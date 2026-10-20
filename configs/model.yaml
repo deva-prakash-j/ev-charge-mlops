@@ -44,3 +44,9 @@ evaluation:
 mlflow:
   experiment: ev-charge-kwh-baseline
   tracking_uri: mlruns
+
+registry:
+  registered_model_prefix: evcharge
+  # The first version may bootstrap Production only when it clears both floors.
+  max_production_mae_regression: 0.10
+  decision_log: promotion_decisions.jsonl

@@ -4,7 +4,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-78%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-86%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -215,6 +215,24 @@ Exploratory analysis, also credential-free:
 
 Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
+### Model registry and promotion gate
+
+Each training run registers its best-validation model under a source/target-specific
+name (`evcharge-sample-energy`, `evcharge-raw-energy`, or the corresponding `-dwell`
+name). The new version is assigned the `staging` alias. It reaches the `production`
+alias only when its held-out validation MAE beats both the mean and Ridge baselines
+and is no more than 10% worse than the current Production model scored on those same
+validation rows. The first model can bootstrap Production only by clearing both
+baseline floors. Blocked candidates remain in Staging, and every decision is recorded
+in `artifacts/promotion_decisions.jsonl` and the training report.
+
+To verify the safety gate after training, submit a deliberately poor constant-zero
+candidate. The command should report that it was blocked; it never changes Production:
+
+```powershell
+.\.venv\Scripts\python.exe -m evcharge.models.registry --source sample --target energy --prove-degraded-candidate
+```
+
 ### Model artefacts
 
 Training writes the selected energy model to `models/<source>/` and the
@@ -336,7 +354,7 @@ ev-charge-mlops/
 │   └── fixtures/                 Aggregate profiling, synthetic generation
 ├── docs/architecture.md          V1 and proposed V2 diagrams
 ├── STACK.md                      Tool choices against named alternatives
-├── tests/                        78 tests
+├── tests/                        86 tests
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
@@ -395,13 +413,14 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Shared feature module with the 1,000-session API parity audit and leakage tests | Done |
 | Baseline models and temporal evaluation | Done |
 | MLflow experiment tracking | Done |
+| MLflow Registry aliases and validation promotion gates | Done |
 | Single-command pipeline entry point | Done |
 | Local FastAPI prediction and health endpoints | Done |
 | EDA notebook | Done |
 | Model artefacts and model card | Done |
 | Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 78 tests |
+| Test suite | Done — 86 tests |
 
 ## Planned enhancements — V2 (Final)
 
@@ -409,8 +428,6 @@ natively, so missingness is treated as signal rather than silently filled with a
   operational hardening for the local FastAPI `/predict` and `/health` endpoints.
 - **CI/CD** — GitHub Actions running lint, tests, the data contract and an offline
   evaluation gate that blocks promotion on MAE regression.
-- **Model registry** — MLflow Registry with explicit `None → Staging → Production`
-  transitions as the source of truth.
 - **Orchestration** — Prefect flows for `ingest → validate → train → evaluate → register`.
 - **Drift monitoring** — Evidently computing PSI, KS and Jensen-Shannon divergence
   against a frozen reference window, exported to Prometheus and visualised in Grafana.

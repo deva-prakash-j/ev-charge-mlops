@@ -99,11 +99,19 @@ of 66,745 rows on disk and the next run silently read the partial tree.
 **Alternatives considered:** Weights & Biases, CSV logs.
 
 W&B is better hosted but requires an account, violating the local-only constraint. MLflow
-runs against a local `mlruns/` directory with no server, and its Model Registry is needed
-for the V2 promotion and rollback workflow — so adopting it now avoids a migration later.
+runs against a local `mlruns/` directory with no server. The Model Registry is used for
+candidate registration and quality-gated promotion.
 
 Each run logs the git commit and a SHA-256 of the training input, so any metric can be
 traced back to the exact code and data that produced it.
+
+The trainer uses the Registry's `staging` and `production` aliases rather than MLflow
+stages, which are deprecated in MLflow 2.9 and later. The best-validation candidate is
+registered and assigned to `staging`; the `production` alias changes only if the
+candidate beats both mean and Ridge baseline MAE and stays within 10% of the current
+Production model's MAE on the same validation rows. The first candidate may bootstrap
+Production only after clearing both baseline floors. Promotion decisions and their data
+and code fingerprints are written to `artifacts/promotion_decisions.jsonl`.
 
 ---
 

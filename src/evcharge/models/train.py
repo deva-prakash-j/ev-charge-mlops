@@ -210,9 +210,10 @@ def run(
     x_train, y_train = prepared["train"]
     y_train = np.ascontiguousarray(y_train.to_numpy(dtype="float64"))
 
-    mlflow.set_tracking_uri(
-        (settings.artifacts_dir.parent / model_config["mlflow"]["tracking_uri"]).as_uri()
-    )
+    from evcharge.models.registry import resolve_tracking_uri
+
+    tracking_uri = resolve_tracking_uri(settings, model_config)
+    mlflow.set_tracking_uri(tracking_uri)
     experiment = model_config["mlflow"]["experiment"]
     if target == "dwell":
         experiment = f"{experiment}-dwell"
@@ -222,11 +223,13 @@ def run(
     data_hash = frame_hash(frame)
     results: dict[str, Any] = {}
     fitted: dict[str, Any] = {}
+    run_ids: dict[str, str] = {}
 
     for name, estimator in build_models(model_config).items():
-        with mlflow.start_run(run_name=f"{name}-{source}"):
+        with mlflow.start_run(run_name=f"{name}-{source}") as run:
             estimator.fit(x_train, y_train)
             fitted[name] = estimator
+            run_ids[name] = run.info.run_id
 
             mlflow.log_params(
                 {
@@ -287,18 +290,18 @@ def run(
                     .round(4)
                     .to_dict()
                 )
-                # Signature and example are logged so the V2 serving layer can
-                # validate request payloads against the trained schema.
-                example = x_train.head(5)
-                signature = mlflow.models.infer_signature(
-                    example, estimator.predict(example)
-                )
-                mlflow.sklearn.log_model(
-                    estimator,
-                    artifact_path="model",
-                    signature=signature,
-                    input_example=example,
-                )
+            # Log every fitted model so whichever candidate wins the same-
+            # validation comparison can be registered without retraining.
+            example = x_train.head(5)
+            signature = mlflow.models.infer_signature(
+                example, estimator.predict(example)
+            )
+            mlflow.sklearn.log_model(
+                estimator,
+                artifact_path="model",
+                signature=signature,
+                input_example=example,
+            )
 
             results[name] = run_metrics
 
@@ -328,7 +331,63 @@ def run(
         if target == "energy"
         else f"training_{target}_{source}.json"
     )
-    (settings.artifacts_dir / report_name).write_text(
+    report_path = settings.artifacts_dir / report_name
+    report_path.write_text(
+        json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8"
+    )
+    from evcharge.models.registry import (
+        current_production_evaluation,
+        evaluate_promotion_gate,
+        feature_spec_artifact,
+        register_candidate,
+        registered_model_name,
+    )
+    from mlflow import MlflowClient
+
+    registry_config = model_config["registry"]
+    model_name = registered_model_name(
+        source, target, registry_config["registered_model_prefix"]
+    )
+    client = MlflowClient(tracking_uri=tracking_uri)
+    production = current_production_evaluation(
+        client,
+        model_name,
+        splits["validation"],
+        prepared["validation"][1],
+        feature_config,
+        data_config,
+    )
+    mean_mae = results["baseline_mean"]["validation"]["overall"]["mae"]
+    ridge_mae = results["baseline_ridge"]["validation"]["overall"]["mae"]
+    candidate_mae = results[best]["validation"]["overall"]["mae"]
+    gate = evaluate_promotion_gate(
+        candidate_mae,
+        mean_mae,
+        ridge_mae,
+        None if production is None else production["validation_mae"],
+        registry_config["max_production_mae_regression"],
+    )
+    report["promotion"] = register_candidate(
+        client,
+        model_name=model_name,
+        source=source,
+        target=target,
+        run_id=run_ids[best],
+        feature_spec_artifact=feature_spec_artifact(source, target),
+        candidate_mae=candidate_mae,
+        mean_baseline_mae=mean_mae,
+        ridge_baseline_mae=ridge_mae,
+        production=production,
+        gate=gate,
+        decision_log=settings.artifacts_dir / registry_config["decision_log"],
+        evidence={
+            "git_commit": commit,
+            "data_sha256": data_hash,
+            "validation_rows": len(splits["validation"]),
+            "candidate_model": best,
+        },
+    )
+    report_path.write_text(
         json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8"
     )
     return report
@@ -368,6 +427,18 @@ def main(argv: list[str] | None = None) -> int:
         key=lambda m: report["results"][m]["validation"]["overall"]["mae"],
     )
     print(f"\n[ok]   best on validation MAE: {best}")
+    promotion = report["promotion"]
+    if promotion["status"] == "promoted":
+        print(
+            f"[ok]   promoted {promotion['model_name']} version "
+            f"{promotion['candidate_version']} to Production"
+        )
+    else:
+        print(
+            f"[warn] candidate {promotion['model_name']} version "
+            f"{promotion['candidate_version']} remains in Staging; gate failed: "
+            f"{', '.join(promotion['gate']['failed_checks'])}"
+        )
     report_name = (
         f"training_{args.source}.json"
         if args.target == "energy"
