@@ -1,18 +1,47 @@
 # ACN-Data terms and project data-sharing decision
 
-The ACN-Data records used for this project are published by Caltech and are subject to
-the publisher's terms. Access requires registration for an API token and use requires
-the dataset citation below. Those terms are separate from the MIT licence that covers
-this repository's code; this notice does not grant a licence to the dataset.
+The ACN-Data records used for this project are published by Caltech, in collaboration
+with PowerFlex Systems, as an open dataset for research. The MIT licence in this
+repository covers the code only; this notice does not grant a licence to the dataset.
 
-## Project policy
+## What the publisher's terms say
 
-No real ACN-Data records or derived snapshots are included in this repository, its ZIP
-submission, or uploaded to upGrad. This is a deliberate deviation from the proposal's
-plan to submit a derived snapshot for evaluation. The committed synthetic fixture
-supports a credential-free end-to-end run. Anyone reproducing results on the licensed
-extract must obtain access directly from the publisher, review and follow the current
-terms, and keep the records outside this repository and submission archive.
+Checked on <https://ev.caltech.edu> on 2026-10-20:
+
+- **Use:** registering for an API token means agreeing "to use ACN-Data only for
+  educational and research purposes" (<https://ev.caltech.edu/register>).
+- **Citation:** published work using ACN-Data is asked to cite the paper below
+  (<https://ev.caltech.edu/dataset>, Citing tab).
+- **Registration:** the publisher asks every user to register "to keep track of how much
+  the dataset is being used and protect it from bad actors".
+- **Redistribution:** not addressed. The site publishes no dataset licence and does not
+  explicitly permit or forbid sharing the records.
+
+## How this project shares the data
+
+| Copy | Real ACN-Data records |
+|---|---|
+| Public GitHub repository | **Not included.** Only the extract manifest (`data/raw/manifest.json`: row counts and SHA-256 hashes), the retrieval code and a synthetic fixture are published. |
+| upGrad submission (ZIP / platform upload) | **Included unmodified** in `data/raw/`, solely so evaluators can reproduce the licensed-data results without registering. |
+
+The evaluation copy is shared for educational assessment only, which is within the
+publisher's stated purpose and matches the accepted proposal ("no redistribution beyond
+the … snapshot submitted to upGrad solely for evaluation"). It ships the extract as
+retrieved rather than a derived snapshot, so the pipeline can be reproduced from its
+first stage. The records keep the publisher's pseudonymous `userID`.
+
+The public repository stays data-free because publishing there would let anyone download
+the records without registering, bypassing the publisher's usage tracking and the
+educational-use agreement made at registration. Public republication would need written
+permission from the dataset maintainer.
+
+## Conditions for recipients of the evaluation copy
+
+- Use it only to evaluate this capstone.
+- Do not republish or redistribute it.
+- For any other use, register at <https://ev.caltech.edu/register> and download the data
+  directly from the publisher.
+- Cite the paper below in any work that uses it.
 
 ## Required citation
 

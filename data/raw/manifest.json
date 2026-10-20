@@ -1,0 +1,30 @@
+{
+  "source": "ACN-Data",
+  "api_url": "https://ev.caltech.edu/api/v1/",
+  "retrieved_at_utc": "2026-10-07T08:11:29+00:00",
+  "citation": "Zachary J. Lee, Tongxin Li and Steven H. Low. 'ACN-Data: Analysis and Applications of an Open EV Charging Dataset.' Proceedings of the Tenth ACM International Conference on Future Energy Systems (e-Energy '19), 2019.",
+  "total_sessions": 66745,
+  "sites": [
+    {
+      "site": "caltech",
+      "file": "sessions_caltech.jsonl",
+      "sessions": 31424,
+      "sha256": "286e6f07fbffa4fae1630f6fef293ebacf63f0a6090360adc9c13e2aaadeea5a",
+      "bytes": 17089196
+    },
+    {
+      "site": "jpl",
+      "file": "sessions_jpl.jsonl",
+      "sessions": 33638,
+      "sha256": "b2df0feb33bd21fe96e8ebf60695d83521bdd019041a75319c249cce38bd5156",
+      "bytes": 22573380
+    },
+    {
+      "site": "office001",
+      "file": "sessions_office001.jsonl",
+      "sessions": 1683,
+      "sha256": "c0359c4f3df5561b2800531a01c9b1864665288723a15d7e8dc904f3f8a9f3b3",
+      "bytes": 830738
+    }
+  ]
+}

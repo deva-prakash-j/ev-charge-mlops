@@ -51,7 +51,7 @@ and an office site).
 |---|---|
 | Sessions | 66,745 |
 | Coverage | Apr 2018 – Sep 2021 |
-| Licence | Open research use; free registration for an API token, citation required |
+| Terms | Educational and research use only, agreed when registering for a free API token; citation requested — see [`DATA_LICENCE.md`](DATA_LICENCE.md) |
 | PII | None. `userID` is a pseudonymous publisher-assigned identifier — see [`artifacts/pii_audit.json`](artifacts/pii_audit.json) |
 
 **Required citation:**
@@ -59,21 +59,26 @@ and an office site).
 > an Open EV Charging Dataset." *Proceedings of the Tenth ACM International Conference on
 > Future Energy Systems (e-Energy '19)*, 2019.
 
-### Why the real data is not in this repository
+### Where the real data is
 
-ACN-Data is distributed under publisher terms that require registration and do not grant
-redistribution. The records also contain a pseudonymous `userID` which, combined with
-station IDs and timestamps, would expose per-individual commuting patterns at named
-workplaces.
+ACN-Data's terms limit use to educational and research purposes and do not address
+redistribution, so there is no explicit permission to republish the records. Publishing
+them would also let anyone bypass the registration the publisher uses to track usage, and
+the records carry a pseudonymous `userID` which, combined with station IDs and
+timestamps, would expose per-individual commuting patterns at named workplaces.
 
-**Submission decision:** no real ACN-Data records or derived snapshots will be included
-in the repository, ZIP, or uploaded to upGrad. This is a deliberate deviation from the
-proposal's derived-snapshot submission plan. Evaluators can run the complete pipeline
-using the committed synthetic fixture; reproducing licensed-data results requires each
-evaluator to obtain ACN-Data directly and comply with the publisher's current terms.
-See [`DATA_LICENCE.md`](DATA_LICENCE.md).
+The data is therefore shared differently in the two copies of this project:
 
-So this repository ships instead:
+| | Public GitHub repository | upGrad submission (ZIP / upload) |
+|---|---|---|
+| Real ACN-Data records | Not included | Included unmodified in `data/raw/`, for evaluation only |
+| Extract manifest (row counts, SHA-256) | `data/raw/manifest.json` | Same file |
+| Synthetic fixture | `data/sample/` | Same files |
+
+See [`DATA_LICENCE.md`](DATA_LICENCE.md) for the publisher's terms and the conditions
+attached to the evaluation copy.
+
+The public repository ships instead:
 
 - the **retrieval script**, so acquisition is reproducible;
 - a **manifest** with SHA-256 hashes and exact row counts, so provenance is verifiable;
@@ -101,12 +106,13 @@ Trained on the licensed extract. Temporal split: train ≤ 2019-12-31, validatio
 2020-01-01..2020-02-29, and the **same fitted model** scored on 2020-04-01..2020-06-30 to
 separate drift impact from model quality.
 
-The licensed records are not redistributed, so this table cannot be retrained from a
-public checkout alone. Its data-free provenance record, including the training-frame
-fingerprint, row counts and exact scores, is tracked in
+The licensed records are not in the public repository, so this table cannot be retrained
+from a public clone alone; the upGrad submission includes them in `data/raw/`. Its
+data-free provenance record, including the training-frame fingerprint, row counts and
+exact scores, is tracked in
 [`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json). To reproduce it,
-obtain the licensed extract, run `python -m evcharge.pipeline --source raw`, and compare
-the resulting `data_sha256` and split counts before comparing metrics. A different
+follow [Licensed-data path](#licensed-data-path--upgrad-submission-copy) and compare the
+resulting `data_sha256` and split counts before comparing metrics. A different
 fingerprint means the result is not an exact reproduction. The credential-free sample
 path is independently runnable, but its metrics are a pipeline demonstration, not a
 replacement for the licensed-data result.
@@ -228,6 +234,21 @@ declared request fields (`kWhRequested`, `milesRequested`, `minutesAvailable`,
 fields are rejected. The demo service binds to localhost and does not implement
 authentication, TLS termination, or production deployment hardening.
 
+### Licensed-data path — upGrad submission copy
+
+The upGrad submission already contains the extract in `data/raw/`, so no token is needed.
+Check the files against the manifest, then run the pipeline without `--fetch`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_fetch_sessions.py -q -rs   # SHA-256, bytes, sessions vs data/raw/manifest.json
+.\.venv\Scripts\python.exe -m evcharge.pipeline --source raw
+```
+
+`artifacts/training_raw.json` then reports `data_sha256` and `rows`; they should equal
+`training_frame_sha256` and `split_rows` in
+[`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json), and the
+headline metrics follow from them.
+
 ### Full path — requires an ACN-Data token
 
 ```powershell
@@ -259,7 +280,8 @@ ev-charge-mlops/
 │   └── sample_profile.yaml       Aggregate statistics for fixture generation
 ├── data/
 │   ├── sample/                   Synthetic fixture (committed)
-│   └── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored)
+│   └── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored except
+│                                 raw/manifest.json; raw/ is in the upGrad ZIP)
 ├── notebooks/
 │   └── 01_data_understanding.ipynb   EDA; imports src/, never redefines logic
 ├── models/
@@ -362,4 +384,5 @@ natively, so missingness is treated as signal rather than silently filled with a
 ## Licence
 
 Code is MIT licensed. The ACN-Data dataset is **not** covered by that licence and remains
-subject to the publisher's terms; it is not redistributed here.
+subject to the publisher's terms (see [`DATA_LICENCE.md`](DATA_LICENCE.md)); it is not
+published in this repository.

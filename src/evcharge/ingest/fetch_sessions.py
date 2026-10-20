@@ -35,9 +35,10 @@ def fetch_site(client: ACNDataClient, site: str, out_dir: Path) -> dict[str, obj
 
     with tmp.open("w", encoding="utf-8", newline="\n") as fh:
         for session in client.iter_sessions(site):
-            line = json.dumps(session, separators=(",", ":"), sort_keys=True)
-            fh.write(line + "\n")
-            digest.update(line.encode("utf-8"))
+            record = json.dumps(session, separators=(",", ":"), sort_keys=True) + "\n"
+            fh.write(record)
+            # Hash exactly the bytes written, so the manifest matches a file checksum.
+            digest.update(record.encode("utf-8"))
             count += 1
             if count % 1000 == 0:
                 logger.info("%s: %d sessions", site, count)

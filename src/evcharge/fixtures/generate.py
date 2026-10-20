@@ -196,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
         for record in frame.to_dict(orient="records"):
             line = json.dumps(record, separators=(",", ":"), sort_keys=True, default=str)
             fh.write(line + "\n")
-            digest.update(line.encode("utf-8"))
+            # Hash exactly the bytes written, so the manifest matches a file checksum.
+            digest.update((line + "\n").encode("utf-8"))
 
     manifest = {
         "source": "SYNTHETIC — generated from aggregate statistics, not real records",
@@ -209,9 +210,10 @@ def main(argv: list[str] | None = None) -> int:
         "contains_pii": False,
         "contains_real_records": False,
         "note": (
-            "Real ACN-Data records are not redistributable. This fixture reproduces "
-            "the schema and the aggregate distributions so the pipeline is runnable "
-            "without credentials. Headline results in the report use the licensed extract."
+            "Real ACN-Data records are not published in the public repository. This "
+            "fixture reproduces the schema and the aggregate distributions so the "
+            "pipeline is runnable without credentials. Headline results in the report "
+            "use the licensed extract."
         ),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }

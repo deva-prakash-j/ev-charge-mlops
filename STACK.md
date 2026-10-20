@@ -134,9 +134,9 @@ magnitude** for detector sensitivity testing. For the committed fixture it was o
 the requirement is a small, deterministic, dependency-light artefact whose generation an
 evaluator can read and verify in one file.
 
-The split matters legally. `fixtures/profile.py` needs the licensed extract and produces
-only aggregate statistics; `fixtures/generate.py` reads those statistics and nothing else.
-No real record is ever redistributed.
+The split keeps real records out of the public repository. `fixtures/profile.py` needs
+the licensed extract and produces only aggregate statistics; `fixtures/generate.py` reads
+those statistics and nothing else, so the committed fixture contains no real record.
 
 The generator derives delivered energy from the driver's request using a fitted log-log
 relationship. Without that, the fixture reproduced correct marginals but no feature-target

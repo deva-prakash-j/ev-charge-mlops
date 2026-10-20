@@ -1,5 +1,6 @@
 """The fixture is published, so these tests guard what it may contain."""
 
+import hashlib
 import json
 
 import pandas as pd
@@ -78,9 +79,10 @@ def test_committed_fixture_matches_its_manifest():
     assert manifest["contains_real_records"] is False
     assert manifest["contains_pii"] is False
 
-    lines = (settings.sample_dir / "sessions_sample.jsonl").read_text(
-        encoding="utf-8"
-    ).splitlines()
+    fixture_path = settings.sample_dir / "sessions_sample.jsonl"
+    assert hashlib.sha256(fixture_path.read_bytes()).hexdigest() == manifest["sha256"]
+
+    lines = fixture_path.read_text(encoding="utf-8").splitlines()
     assert len(lines) == manifest["sessions"]
     for line in lines:
         assert FORBIDDEN_FIELDS.isdisjoint(json.loads(line))

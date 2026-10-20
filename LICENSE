@@ -26,5 +26,6 @@ NOTE ON DATA
 
 This licence covers the source code only. The ACN-Data dataset used by this
 project is published by the California Institute of Technology under its own
-terms, which require registration and citation and do not grant redistribution.
-No ACN-Data records are included in this repository. See README.md for details.
+terms, which require registration, limit use to educational and research
+purposes and ask for citation. No ACN-Data records are included in this public
+repository. See DATA_LICENCE.md for details.
