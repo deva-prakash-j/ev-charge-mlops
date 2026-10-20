@@ -91,7 +91,7 @@ A frozen reference window (2019-07 to 2020-02) is built by
 `python -m evcharge.validation.reference --source raw` and compared against each
 new or changed monthly batch on the model inputs, delivered-energy target, and
 prediction distribution. The Evidently report and a data-free JSON summary are written
-under `artifacts/drift/`; the snapshot records stay in the upGrad evaluation copy.
+under `artifacts/drift/`; the snapshot records stay in the gitignored local licensed copy.
 
 | Signal | Metric | Threshold |
 |---|---|---|

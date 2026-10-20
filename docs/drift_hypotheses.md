@@ -7,7 +7,7 @@ false alarms without retuning them on the evaluation batches.
 The frozen reference is the half-open local-time interval
 **2019-07-01 through 2020-02-29** (`2019-07-01 <= connectionTimeLocal <
 2020-03-01`). Its data is stored as `data/reference/drift_reference_v1.parquet`
-in the private evaluation copy, with row counts and SHA-256 values in the
+in the gitignored local licensed copy, with row counts and SHA-256 values in the
 data-free `data/reference/manifest.json`.
 
 | ID | Hypothesis | Comparison and predeclared signal |

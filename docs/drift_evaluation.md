@@ -2,14 +2,15 @@
 
 The detector thresholds and hypotheses were declared in
 [`drift_hypotheses.md`](drift_hypotheses.md) before scoring. The licensed snapshot
-remains local to the evaluation copy; the tracked manifest identifies it by SHA-256
+stays in the gitignored local licensed copy; the tracked manifest identifies it by SHA-256
 `fe8bbb47323dec1b88580bbe4a0863f03c2866728fd201f0e1ef29fc133d43eb` (19,144 rows).
 This document contains aggregate measurements only.
 
 ## Reproduction
 
-Run these commands in the licensed evaluation copy after normalising the raw extract,
-creating the frozen reference, and registering a raw Production energy model:
+Run these commands after fetching the licensed extract with an ACN-Data token
+(`python -m evcharge.pipeline --source raw --fetch`), creating the frozen reference, and
+registering a raw Production energy model:
 
 ```powershell
 .\.venv\Scripts\python.exe -m evcharge.pipeline --source raw

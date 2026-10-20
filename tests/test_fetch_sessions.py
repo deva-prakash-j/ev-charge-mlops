@@ -33,7 +33,7 @@ def test_manifest_hash_is_the_file_checksum(tmp_path):
 
 
 def test_local_extract_matches_its_manifest():
-    """Runs only where the real extract is present, such as the upGrad submission."""
+    """Runs only where a licensed extract has been fetched with an ACN-Data token."""
     raw_dir = get_settings().raw_dir
     manifest_path = raw_dir / "manifest.json"
     if not manifest_path.is_file():

@@ -2,13 +2,38 @@
 
 Drift-aware MLOps pipeline for electric-vehicle charge-session energy and dwell-time prediction.
 
-![status](https://img.shields.io/badge/version-V1%20baseline-blue)
+![status](https://img.shields.io/badge/version-V2%20drift--aware-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
 [![CI](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/deva-prakash-j/ev-charge-mlops/actions/workflows/ci.yml)
-![tests](https://img.shields.io/badge/tests-105%20collected-brightgreen)
+![tests](https://img.shields.io/badge/tests-108%20collected-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
-**Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
+**Programme:** upGrad MLOps, August 2025 batch · **Track:** Bring Your Own Capstone ·
+**Author:** Deva Prakash J
+
+**Headline result.** On 66,745 real ACN-Data sessions, the gradient-boosted energy model
+cuts per-session error by 44% against the naive average (validation MAE 4.40 vs 7.89 kWh).
+The April 2020 regime change then silently raises that error by 43% (6.27 kWh) while the
+service stays healthy. The validated drift detector flags April 2020 with PSI 0.231 and
+raises no false alarms across 8 stable months. The quality gate blocks a degraded candidate
+in CI, and an isolated rollback drill restores the prior version. Chronological retraining
+did **not** meet the predeclared 10% recovery target (best 5.71 vs ≤ 4.84 kWh), and this
+is reported as a measured null result.
+
+![Workflow walkthrough: CI gate, MLflow registry, live prediction, Grafana drift and Prometheus alert](docs/assets/demo_walkthrough.gif)
+
+### Submission deliverables
+
+| Deliverable | File |
+|---|---|
+| Technical report (PDF) | [`docs/deliverables/EV_Charge_MLOps_Technical_Report.pdf`](docs/deliverables/EV_Charge_MLOps_Technical_Report.pdf) |
+| Technical report (editable DOCX) | [`docs/deliverables/EV_Charge_MLOps_Technical_Report.docx`](docs/deliverables/EV_Charge_MLOps_Technical_Report.docx) |
+| Executive presentation (PPTX, with hidden Q&A appendix) | [`docs/deliverables/EV_Charge_MLOps_Executive_Presentation.pptx`](docs/deliverables/EV_Charge_MLOps_Executive_Presentation.pptx) |
+| Report figures (aggregate metrics only), service screenshots and the workflow GIF | [`docs/assets/`](docs/assets/) |
+
+The submission is this repository only. It contains no licensed ACN-Data records. See
+[Where the real data is](#where-the-real-data-is) for how evaluators reproduce the
+licensed results.
 
 ---
 
@@ -68,17 +93,18 @@ them would also let anyone bypass the registration the publisher uses to track u
 the records carry a pseudonymous `userID` which, combined with station IDs and
 timestamps, would expose per-individual commuting patterns at named workplaces.
 
-The data is therefore shared differently in the two copies of this project:
+The repository is the whole submission, and it ships no licensed records:
 
-| | Public GitHub repository | upGrad submission (ZIP / upload) |
+| | In this repository | How to obtain or rebuild it |
 |---|---|---|
-| Real ACN-Data records | Not included | Included unmodified in `data/raw/`, for evaluation only |
-| Extract and reference manifests (counts, SHA-256) | `data/raw/manifest.json`, `data/reference/manifest.json` | Same files |
-| Frozen drift reference | Not included | Generated in `data/reference/` from the licensed extract |
-| Synthetic fixture | `data/sample/` | Same files |
+| Real ACN-Data records | Not included | Register for a free token and run the [licensed-data path](#licensed-data-path--requires-a-free-acn-data-token) |
+| Extract and reference manifests (counts, SHA-256) | `data/raw/manifest.json`, `data/reference/manifest.json` | Tracked; used to verify a fetched extract |
+| Frozen drift reference | Not included | `python -m evcharge.validation.reference --source raw` |
+| Licensed benchmarks (aggregate scores and data fingerprints) | `benchmarks/` | Tracked |
+| Synthetic fixture | `data/sample/` | Tracked; runs every stage without credentials |
 
-See [`DATA_LICENCE.md`](DATA_LICENCE.md) for the publisher's terms and the conditions
-attached to the evaluation copy.
+See [`DATA_LICENCE.md`](DATA_LICENCE.md) for the publisher's terms, the reproduction steps
+and a disclosure about identifier values found in early git history.
 
 The public repository ships instead:
 
@@ -108,13 +134,13 @@ Trained on the licensed extract. Temporal split: train ≤ 2019-12-31, validatio
 2020-01-01..2020-02-29, and the **same fitted model** scored on 2020-04-01..2020-06-30 to
 separate drift impact from model quality.
 
-The licensed records are not in the public repository, so this table cannot be retrained
-from a public clone alone; the upGrad submission includes them in `data/raw/`. Its
+The licensed records are not in the repository, so this table cannot be retrained from a
+clone alone; an evaluator fetches the same extract with a free ACN-Data token. Its
 data-free provenance record, including the training-frame fingerprint, row counts and
 exact scores, is tracked in
 [`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json). To reproduce it,
-follow [Licensed-data path](#licensed-data-path--upgrad-submission-copy) and compare the
-resulting `data_sha256` and split counts before comparing metrics. A different
+follow [Licensed-data path](#licensed-data-path--requires-a-free-acn-data-token) and
+compare the resulting `data_sha256` and split counts before comparing metrics. A different
 fingerprint means the result is not an exact reproduction. The credential-free sample
 path is independently runnable, but its metrics are a pipeline demonstration, not a
 replacement for the licensed-data result.
@@ -154,7 +180,9 @@ This is a separate target, not a feature: the dwell model uses only the same plu
 fields as the energy model. The synthetic demo trains the same target but its scores are
 not evidence of licensed-data model quality. Full-data evaluation is recorded in
 [`benchmarks/dwell_baseline.json`](benchmarks/dwell_baseline.json); the full run report is
-`artifacts/training_dwell_raw.json` in the upGrad copy.
+written to the gitignored `artifacts/training_dwell_raw.json` by a licensed run.
+
+![Model MAE against baselines](docs/assets/fig_model_mae.png)
 
 ## Installation
 
@@ -434,37 +462,53 @@ Remove-Item Env:EVCHARGE_API_URL
 Use `docker compose down -v` only when you intentionally want to erase those local
 registry and log records.
 
-### Licensed-data path — upGrad submission copy
+### Licensed-data path — requires a free ACN-Data token
 
-The upGrad submission already contains the extract in `data/raw/`, so no token is needed.
-Check the files against the manifest, then run the pipeline without `--fetch`:
-
-```powershell
-.\.venv\Scripts\python.exe -m pytest tests/test_fetch_sessions.py -q -rs   # SHA-256, bytes, sessions vs data/raw/manifest.json
-.\.venv\Scripts\python.exe -m evcharge.pipeline --source raw
-.\.venv\Scripts\python.exe -m evcharge.validation.reference --source raw
-```
-
-`artifacts/training_raw.json` then reports `data_sha256` and `rows`; they should equal
-`training_frame_sha256` and `split_rows` in
-[`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json), and the
-headline metrics follow from them. Compare `artifacts/training_dwell_raw.json` against
-[`benchmarks/dwell_baseline.json`](benchmarks/dwell_baseline.json) for the dwell target.
-The reference command creates the frozen 2019-07..2020-02 drift snapshot and verifies its
-metadata in `data/reference/manifest.json`. The snapshot file itself is included only in
-the upGrad evaluation copy.
-
-### Full path — requires an ACN-Data token
+The licensed records are not in this repository. Register at
+<https://ev.caltech.edu/register>, then fetch the same three sites and date range directly
+from the publisher and run the full pipeline:
 
 ```powershell
 Copy-Item .env.example .env      # then paste your token into ACN_API_TOKEN
 .\.venv\Scripts\python.exe -m evcharge.ingest.check_access
 .\.venv\Scripts\python.exe -m evcharge.pipeline --source raw --fetch
 .\.venv\Scripts\python.exe -m evcharge.validation.pii_audit
+.\.venv\Scripts\python.exe -m evcharge.validation.reference --source raw
+git diff -- data/raw/manifest.json data/reference/manifest.json
+```
+
+Fetching rewrites `data/raw/manifest.json`. If `git diff` shows only a new
+`retrieved_at_utc` there, the per-site SHA-256 hashes, byte counts and session counts match
+the extract used for this report. The reference command also rewrites
+`data/reference/manifest.json`; its `source_extract_manifest_sha256` changes with the new
+retrieval timestamp, while `logical_sha256`, `rows`, `rows_by_month` and `rows_by_site`
+should be unchanged. `artifacts/training_raw.json` then reports `data_sha256` and
+`rows`; they should equal `training_frame_sha256` and `split_rows` in
+[`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json), and the
+headline metrics follow from them. Compare `artifacts/training_dwell_raw.json` against
+[`benchmarks/dwell_baseline.json`](benchmarks/dwell_baseline.json) for the dwell target.
+If the publisher has revised historical records since retrieval, the hashes differ and
+the run is a re-analysis, not an exact reproduction.
+
+An already-fetched extract can be rechecked against its manifest and rerun without
+`--fetch`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests/test_fetch_sessions.py -q -rs
+.\.venv\Scripts\python.exe -m evcharge.pipeline --source raw
 ```
 
 `.env` is gitignored. The token is never logged — it is wrapped in a `Secret` type whose
 `repr` and `str` are masked, with a test asserting it cannot leak.
+
+To regenerate the report figures in `docs/assets/` from the licensed benchmark and drift
+outputs (aggregate metrics only):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\evaluate_drift.py
+.\.venv\Scripts\python.exe scripts\evaluate_retraining_recovery.py
+.\.venv\Scripts\python.exe scripts\make_report_figures.py
+```
 
 ### Regenerating the fixture
 
@@ -486,8 +530,10 @@ ev-charge-mlops/
 ├── data/
 │   ├── sample/                   Synthetic fixture (committed)
 │   ├── raw/ interim/ quarantine/ Licensed extract and derivatives (gitignored except
-│   │                             raw/manifest.json; raw/ is in the upGrad ZIP)
-│   └── reference/                Frozen drift window; manifest tracked, data in ZIP only
+│   │                             raw/manifest.json; fetched with an ACN-Data token)
+│   └── reference/                Frozen drift window; manifest tracked, snapshot gitignored
+├── benchmarks/                   Licensed-data scores and data fingerprints (aggregate only)
+├── examples/                     Sample /predict request and response
 ├── notebooks/
 │   └── 01_data_understanding.ipynb   EDA; imports src/, never redefines logic
 ├── models/
@@ -498,18 +544,49 @@ ev-charge-mlops/
 │   ├── config.py                 Settings, secret handling, YAML loading
 │   ├── pipeline.py               Single entry point: normalise → contract → train
 │   ├── ingest/                   API client, retrieval, normalisation
-│   ├── validation/               PII audit, data contract
+│   ├── validation/               PII audit, data contract, frozen drift reference
 │   ├── features/                 Shared builder used by training and serving
-│   ├── models/                   Baselines, temporal evaluation, MLflow
+│   ├── models/                   Baselines, temporal evaluation, MLflow registry gate
+│   ├── serve/                    FastAPI app, Prometheus metrics, prediction log
+│   ├── monitoring/               Evidently drift scoring and Pushgateway export
+│   ├── orchestration/            Prefect training and monthly monitoring flows
 │   └── fixtures/                 Aggregate profiling, synthetic generation
-├── docs/architecture.md          V1 and implemented V2 diagrams
+├── docs/
+│   ├── deliverables/             Technical report (PDF, DOCX) and executive slides (PPTX)
+│   ├── assets/                   Report figures and service screenshots
+│   ├── architecture.md           V1 and implemented V2 diagrams, rollback steps
+│   ├── drift_hypotheses.md       Predeclared drift hypotheses and thresholds
+│   ├── drift_evaluation.md       Detector and recovery evaluation results
+│   ├── feature_specification.md  Feature rationale and leakage rules
+│   └── operations_governance.md  Owners, runbook, rollback drill evidence
 ├── monitoring/                   Prometheus rules and Grafana provisioning
-├── scripts/                      CI gate and drift/recovery evaluations
-├── STACK.md                      Tool choices against named alternatives
-├── tests/                        105 tests (container smoke test is opt-in)
+├── scripts/                      CI gate, drift/recovery evaluations, report figures
+├── Dockerfile, docker-compose.yml  Image and local MLflow/API/monitoring stack
+├── STACK.md                      Tool choices against named alternatives, licences
+├── DATA_LICENCE.md               Dataset terms, reproduction, history disclosure
+├── tests/                        108 tests (container smoke test is opt-in)
 ├── mlruns/                       MLflow tracking store (gitignored)
 └── artifacts/                    Run reports (pii_audit.json committed as evidence)
 ```
+
+## Screenshots
+
+Captured from the local Docker Compose stack. The registry and API show the data-free
+sample model; the drift dashboard and alerts show aggregate scores from the licensed
+monthly batches. The [workflow GIF](docs/assets/demo_walkthrough.gif) at the top of this
+README steps through the same screens with the real CI gate evidence and a live API call.
+
+| Grafana drift dashboard (April 2020 alert) | Prometheus alert rules |
+|---|---|
+| ![Grafana drift dashboard](docs/assets/screenshot_grafana_drift.png) | ![Prometheus alerts](docs/assets/screenshot_prometheus_alerts.png) |
+
+| MLflow registry aliases and gate tags | FastAPI `/predict` contract |
+|---|---|
+| ![MLflow registry](docs/assets/screenshot_mlflow_registry.png) | ![FastAPI docs](docs/assets/screenshot_api_docs.png) |
+
+| Drift detector validation | Retraining recovery (null result) |
+|---|---|
+| ![Monthly PSI](docs/assets/fig_drift_psi.png) | ![Recovery](docs/assets/fig_recovery.png) |
 
 ## Data quality findings
 
@@ -567,7 +644,7 @@ version 1 using the captured previous image ID. See
 [`docs/operations_governance.md`](docs/operations_governance.md) for scope, evidence, and
 limitations.
 
-## Current status — V1 baseline and V2 monitoring
+## Current status — V1 baseline, V2 monitoring and submission
 
 | Component | Status |
 |---|---|
@@ -588,19 +665,47 @@ limitations.
 | Model artefacts and model card | Done |
 | Connected-duration (dwell-time) prediction | Done; separate training target and evaluation |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 105 passed, including the live container smoke test |
+| Test suite | Done — 108 collected, including the opt-in live container smoke test |
 | GitHub Actions CI — Ruff, tests, contract, registry promotion gate, Docker build | Done; runs on every push and pull request |
 | Prefect training and monthly monitoring flows, drift scoring and guarded retraining | Done; requires local Prefect server and licensed raw data |
 | Evidently PSI/KS/JS, Prometheus export, Grafana dashboard and alert rules | Done; target PSI alert validated on April 2020 |
 | Drift false-alarm, sensitivity and post-shift recovery evaluation | Done; 0/8 false alarms, +30% first tested PSI crossing; recovery target not met |
 | Phase 7 governance | Done; isolated registry-alias and prior-image rollback drill passed; ownership and direct-tool license inventory documented |
+| Phase 8 submission | Done; technical report (PDF/DOCX), executive slides, figures, screenshots, git-history data audit and fresh-clone verification |
 
-## Remaining work — Submission and model recovery
+## Business impact
 
-- **Submission** — technical report, executive presentation, final packaging and
-  fresh-clone/fresh-ZIP verification.
-- **Model recovery** — investigate why later chronological retraining windows remain
-  above the pre-shift MAE target (see [`docs/drift_evaluation.md`](docs/drift_evaluation.md)).
+Measured on the licensed extract; the translations below are per session and assume no
+error cancellation across sessions.
+
+| Decision it supports | Measured effect | Operational meaning |
+|---|---|---|
+| Site load forecast and demand-limit headroom | Energy MAE 4.40 kWh vs 7.89 kWh for the naive average (−44%) | About 3.5 kWh less error per plug-in to buffer for when staying under a contracted demand limit |
+| Driver "ready-by" estimate | Dwell MAE 1.66 h vs 3.07 h (−46%) | Departure estimates about 1.4 hours closer, so fewer surprise unfinished charges |
+| Silent-failure exposure | Same model degrades to 6.27 kWh (+43%) after April 2020 with no uptime or latency signal | PSI drift alert on the first post-shift monthly batch, with 0/8 false alarms in stable months |
+| Release safety | Degraded candidate (13.5 kWh MAE) blocked in CI; Production unchanged | A bad model cannot reach the scheduler through the automated path |
+| Recovery | Registry alias and previous-image rollback drill passed | A known-good version can be restored without retraining |
+
+## Limitations and future work
+
+- **Recovery target not met.** Retraining through 2020-06 or 2021-02 leaves post-shift
+  MAE at 6.64 and 5.71 kWh against a ≤ 4.84 kWh target. Next steps: site-aware or
+  recency-weighted training, the deferred rolling-occupancy feature, and longer
+  post-shift windows (see [`docs/drift_evaluation.md`](docs/drift_evaluation.md)).
+- **Site 0019 is under-served.** Its validation MAE is 10.3 kWh (R² −0.48) on 219 sessions,
+  versus 3.0–4.7 kWh at the larger sites. Predictions there should not drive scheduling
+  without a site-specific model or more data.
+- **Detector scope.** Only one real shift (April 2020) and controlled multiplicative shifts
+  were tested; the first alert needs about a +30% energy shift, so slow drift below that
+  is not caught by PSI alone.
+- **Data and ethics.** `userID` is pseudonymous, and with station IDs and timestamps it
+  could expose individual commuting patterns, so the records stay out of the repository and
+  the API logs encoded features only. Results describe three Californian workplace and
+  campus sites and may not transfer to public or depot charging.
+- **Production readiness.** The stack binds to loopback without authentication or TLS,
+  runs on one host, and has no staffed on-call rota. Production needs managed registry
+  storage, secrets management, authenticated ingress and a named charging-operations
+  approver; see [`docs/operations_governance.md`](docs/operations_governance.md).
 
 The Phase 3 local deployment is intentionally unauthenticated and binds its host ports to
 loopback. It is an evaluation/demo deployment, not a public production endpoint.

@@ -19,30 +19,51 @@ Checked on <https://ev.caltech.edu> on 2026-10-20:
 
 ## How this project shares the data
 
+The capstone is submitted as this public GitHub repository only; no separate data
+upload or ZIP accompanies it.
+
 | Copy | Real ACN-Data records |
 |---|---|
-| Public GitHub repository | **Not included.** Only data-free manifests (`data/raw/manifest.json` and `data/reference/manifest.json`: counts and hashes), retrieval code and a synthetic fixture are published. |
-| upGrad submission (ZIP / platform upload) | **Included unmodified** in `data/raw/`, plus the versioned derived drift reference in `data/reference/`, solely so evaluators can reproduce the results without registering. |
+| Public GitHub repository (the submission) | **Not included.** Only data-free manifests (`data/raw/manifest.json` and `data/reference/manifest.json`: counts and SHA-256 hashes), retrieval code, a synthetic fixture, and aggregate metrics, figures and reports are published. |
+| Local working copy of the author | The extract retrieved through the API, kept outside version control (`data/raw/*.jsonl` and `data/reference/*.parquet` are gitignored). |
 
-The evaluation copy is shared for educational assessment only, which is within the
-publisher's stated purpose and matches the accepted proposal ("no redistribution beyond
-the … snapshot submitted to upGrad solely for evaluation"). It ships the extract as
-retrieved rather than only a derived snapshot, so the pipeline can be reproduced from its
-first stage. The drift reference is derived from the 2019-07 through 2020-02 window and
-omits session and user identifiers. The original extract keeps the publisher's
-pseudonymous `userID`.
-
-The public repository stays data-free because publishing there would let anyone download
-the records without registering, bypassing the publisher's usage tracking and the
+The repository stays data-free because publishing the records there would let anyone
+download them without registering, bypassing the publisher's usage tracking and the
 educational-use agreement made at registration. Public republication would need written
 permission from the dataset maintainer.
 
-## Conditions for recipients of the evaluation copy
+## How evaluators reproduce the licensed results
 
-- Use it only to evaluate this capstone.
-- Do not republish or redistribute it.
-- For any other use, register at <https://ev.caltech.edu/register> and download the data
-  directly from the publisher.
+1. Register for a free API token at <https://ev.caltech.edu/register> and put it in
+   `.env` as `ACN_API_TOKEN` (copy `.env.example`).
+2. Run `python -m evcharge.pipeline --source raw --fetch` (see the README) to download
+   the same sites and date range directly from the publisher and run the pipeline.
+3. Run the raw pipeline and compare the recomputed `data_sha256`, split row counts and
+   metrics with `data/raw/manifest.json`, `benchmarks/licensed_baseline.json` and
+   `benchmarks/dwell_baseline.json`.
+
+Without a token, the synthetic fixture exercises every stage of the same code path; its
+metrics are not comparable with the licensed benchmarks.
+
+## Disclosure: identifiers in early git history
+
+A history audit before submission found that commits from `84c9d0f` (V1 baseline) up to
+the Phase 8 commit used identifier values of one real ACN session as unit-test inputs in
+`tests/test_pii_audit.py`: one `_id`, one `sessionID`, one `stationID`, two space labels
+and two pseudonymous `userID` values. No energy, timing, location or other measurement
+fields were included. The current tree replaces them with synthetic values of the same
+shape. History was not rewritten because the values are pseudonymous, carry no
+measurements, and a force-push would invalidate published commit references. Every other
+blob ever committed was scanned against the 66,745 licensed session, object and user
+identifiers with zero matches; the synthetic fixture has never overlapped the licensed
+records.
+
+## Conditions for anyone using the data
+
+- Use it only for educational and research purposes, as agreed at registration.
+- Do not republish or redistribute the records.
+- Register at <https://ev.caltech.edu/register> and download the data directly from the
+  publisher.
 - Cite the paper below in any work that uses it.
 
 ## Required citation

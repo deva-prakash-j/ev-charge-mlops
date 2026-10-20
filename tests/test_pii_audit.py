@@ -9,11 +9,11 @@ from evcharge.validation.pii_audit import audit_column, classify_structure
 @pytest.mark.parametrize(
     "value, expected",
     [
-        ("5c36621bf9af8b4639a8e0b5", "mongo_object_id"),
-        ("000000333", "zero_padded_numeric_id"),
-        ("1-1-179-794", "dashed_numeric_id"),
-        ("1_1_179_794_2018-09-05 11:08:08.945820", "acn_session_id"),
-        ("Wed, 05 Sep 2018 11:08:09 GMT", "http_date"),
+        ("5c0000000000000000000a01", "mongo_object_id"),
+        ("000099901", "zero_padded_numeric_id"),
+        ("1-1-178-801", "dashed_numeric_id"),
+        ("1_1_178_801_2019-01-01 00:00:00.000000", "acn_session_id"),
+        ("Tue, 01 Jan 2019 00:00:00 GMT", "http_date"),
         ("America/Los_Angeles", "iana_timezone"),
         (7.114, "numeric"),
         (True, "boolean"),
@@ -27,10 +27,10 @@ def test_structure_classification(value, expected):
 @pytest.mark.parametrize(
     "name, values",
     [
-        ("_id", ["5c36621bf9af8b4639a8e0b5", "5b36621bf9af8b4639a8e0d2"]),
+        ("_id", ["5c0000000000000000000a01", "5b0000000000000000000a02"]),
         ("kWhDelivered", [7.114, 9.283000000000001, 6.046]),
-        ("stationID", ["1-1-179-794", "2-39-83-131"]),
-        ("spaceID", ["AG-3F20", "CA-304"]),
+        ("stationID", ["1-1-178-801", "2-39-84-140"]),
+        ("spaceID", ["SY-1F01", "SY-101"]),
         ("timezone", ["America/Los_Angeles"]),
     ],
 )
@@ -57,5 +57,5 @@ def test_luhn_filters_digit_runs_but_keeps_real_card_numbers():
 
 
 def test_user_id_is_reported_as_pseudonymous_not_anonymous():
-    result = audit_column("userID", ["000000333", "000000371"])
+    result = audit_column("userID", ["000099901", "000099902"])
     assert result["classification"] == "PSEUDONYMOUS_IDENTIFIER"

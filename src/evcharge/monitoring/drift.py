@@ -66,7 +66,8 @@ def load_reference(settings: Settings) -> pd.DataFrame:
     if not manifest_path.is_file():
         raise ConfigError(
             f"Drift reference manifest is missing: {manifest_path}. "
-            "Use the licensed evaluation copy and regenerate the reference."
+            "Fetch the licensed extract with an ACN-Data token and regenerate the "
+            "reference."
         )
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
