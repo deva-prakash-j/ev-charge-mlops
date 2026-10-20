@@ -20,6 +20,7 @@ import shutil
 import sys
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import pandas as pd
 
@@ -112,8 +113,19 @@ def normalise_site(path: Path, fmt: str) -> pd.DataFrame:
 
 
 def write_partitions(frame: pd.DataFrame, out_dir: Path) -> int:
-    """Write to a staging tree then swap, so a failure never leaves a partial one."""
+    """Write to staging and keep the previous tree recoverable during replacement."""
+    out_dir.parent.mkdir(parents=True, exist_ok=True)
     staging = out_dir.with_name(out_dir.name + ".staging")
+
+    if not out_dir.exists():
+        backups = sorted(
+            out_dir.parent.glob(f"{out_dir.name}.backup-*"),
+            key=lambda path: path.stat().st_mtime_ns,
+            reverse=True,
+        )
+        if backups:
+            backups[0].rename(out_dir)
+
     if staging.exists():
         shutil.rmtree(staging)
     staging.mkdir(parents=True, exist_ok=True)
@@ -127,9 +139,26 @@ def write_partitions(frame: pd.DataFrame, out_dir: Path) -> int:
         )
         written += 1
 
+    backup: Path | None = None
     if out_dir.exists():
-        shutil.rmtree(out_dir)
-    staging.rename(out_dir)
+        backup = out_dir.with_name(f"{out_dir.name}.backup-{uuid4().hex}")
+        out_dir.rename(backup)
+
+    try:
+        staging.rename(out_dir)
+    except Exception:
+        if backup is not None and backup.exists():
+            try:
+                backup.rename(out_dir)
+            except OSError as rollback_error:
+                raise RuntimeError(
+                    f"Could not install partitions at {out_dir} or restore the "
+                    f"previous tree; it remains at {backup}."
+                ) from rollback_error
+        raise
+
+    if backup is not None:
+        shutil.rmtree(backup)
     return written
 
 

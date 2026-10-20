@@ -8,6 +8,12 @@ version = "0.1.0"
 description = "Drift-aware MLOps pipeline for EV charge-session prediction"
 requires-python = ">=3.11"
 
+[project.optional-dependencies]
+serve = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

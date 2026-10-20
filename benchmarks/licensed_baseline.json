@@ -1,0 +1,35 @@
+{
+  "source": "ACN-Data",
+  "citation": "Zachary J. Lee, Tongxin Li and Steven H. Low. ACN-Data: Analysis and Applications of an Open EV Charging Dataset. e-Energy '19, 2019.",
+  "run_timestamp_utc": "2026-10-07T11:15:10+00:00",
+  "run_git_commit": "ef0db3da701a327645310db80f4ed74e4cd619a0",
+  "training_frame_sha256": "33e52b6e57fd6c2e21d17ea997c32b161cfe965b04b9d7f43f2a0bd1c75fb431",
+  "training_frame_sha256_description": "SHA-256 of the normalized, post-quarantine DataFrame used for training; the licensed source records are not included.",
+  "split_rows": {
+    "train": 48957,
+    "validation": 4815,
+    "post_shift": 942
+  },
+  "metrics": {
+    "baseline_mean": {
+      "train": {"mae": 7.066609781666251, "r2": 0.0},
+      "validation": {"mae": 7.894391092334453, "r2": -0.0104299877627676},
+      "post_shift": {"mae": 8.479234606190696, "r2": -0.16900491706189058}
+    },
+    "baseline_ridge": {
+      "train": {"mae": 4.979177872291757, "r2": 0.5102725024868908},
+      "validation": {"mae": 5.382119059828043, "r2": 0.5012717698910867},
+      "post_shift": {"mae": 6.944442292529737, "r2": 0.23471147515481605}
+    },
+    "hist_gradient_boosting": {
+      "train": {"mae": 3.700976438820952, "r2": 0.6660438296408633},
+      "validation": {"mae": 4.3993316266227485, "r2": 0.5786558875219532},
+      "post_shift": {"mae": 6.272095840840313, "r2": 0.3553913988754174}
+    }
+  },
+  "reproduction": {
+    "requires_licensed_extract": true,
+    "command": "python -m evcharge.pipeline --source raw",
+    "comparison": "Compare data_sha256 and split counts in artifacts/training_raw.json before comparing model metrics. A different input fingerprint is not an exact reproduction."
+  }
+}

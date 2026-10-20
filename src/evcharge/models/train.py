@@ -1,9 +1,10 @@
 """Baseline training with temporal splits and MLflow tracking.
 
 Three models are trained in order of increasing complexity -- mean, ridge,
-LightGBM -- so the gain from the candidate is measured against a floor rather
-than asserted. Every run logs parameters, metrics, the git commit and the input
-data hash, so any prediction is traceable to the code and data that produced it.
+HistGradientBoosting -- so the gain from the candidate is measured against a
+floor rather than asserted. Every run logs parameters, metrics, the git commit
+and the input data hash, so any prediction is traceable to the code and data
+that produced it.
 
 Usage:  python -m evcharge.models.train --source sample
 """
@@ -78,8 +79,7 @@ def temporal_split(
     post_start = pd.Timestamp(split["post_shift_start"])
     post_end = pd.Timestamp(split["post_shift_end"])
 
-    # Indices are reset because the native LightGBM library requires contiguous
-    # label arrays, and sliced frames otherwise carry a gapped index.
+    # Reset indices so each temporal slice has a clean, contiguous row index.
     return {
         "train": frame[when <= train_end].reset_index(drop=True),
         "validation": frame[
@@ -172,6 +172,13 @@ def run(settings: Settings, source: str) -> dict[str, Any]:
         logger.info("%-11s %6d rows", name, len(part))
     if splits["train"].empty or splits["validation"].empty:
         raise ConfigError("Temporal split produced an empty train or validation set.")
+    if splits["post_shift"].empty:
+        post_start = model_config["split"]["post_shift_start"]
+        post_end = model_config["split"]["post_shift_end"]
+        raise ConfigError(
+            "Temporal split produced no labeled post-shift rows in "
+            f"{post_start}..{post_end}; check the configured window and source data."
+        )
 
     # Fitted on the training slice only; fitting on all data would leak the
     # future category vocabulary into training.

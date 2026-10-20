@@ -55,6 +55,26 @@ def test_failed_run_is_recorded(settings, monkeypatch):
     assert "train" not in summary["stages"]
 
 
+def test_unexpected_stage_error_is_recorded(settings, monkeypatch):
+    import json
+
+    monkeypatch.setitem(STAGES, "normalise", lambda s, src: {"rows": 1})
+    monkeypatch.setitem(
+        STAGES,
+        "contract",
+        lambda s, src: (_ for _ in ()).throw(ValueError("unexpected defect")),
+    )
+
+    with pytest.raises(ValueError, match="unexpected defect"):
+        run_pipeline(settings, "unit", DEFAULT_STAGES)
+
+    summary = json.loads((settings.artifacts_dir / "pipeline_unit.json").read_text())
+    assert summary["passed"] is False
+    assert summary["stages"]["contract"]["status"] == "failed"
+    assert summary["stages"]["contract"]["error_type"] == "ValueError"
+    assert summary["stages"]["contract"]["error"] == "unexpected defect"
+
+
 def test_successful_run_records_every_stage(settings, monkeypatch):
     for name in DEFAULT_STAGES:
         monkeypatch.setitem(STAGES, name, lambda s, src, n=name: {"did": n})

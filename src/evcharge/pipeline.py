@@ -109,8 +109,13 @@ def run_pipeline(
         started = time.perf_counter()
         try:
             result = STAGES[name](settings, source)
-        except StageFailure as exc:
-            summary["stages"][name] = {"status": "failed", "error": str(exc)}
+        except Exception as exc:
+            logger.exception("Pipeline stage %s failed", name)
+            summary["stages"][name] = {
+                "status": "failed",
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
             summary["passed"] = False
             _persist(settings, source, summary)
             raise
@@ -171,6 +176,10 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as exc:
         print(f"\n[FAIL] {exc}", file=sys.stderr)
         return 2
+    except Exception as exc:
+        logger.exception("Pipeline failed unexpectedly")
+        print(f"\n[FAIL] Unexpected pipeline error: {exc}", file=sys.stderr)
+        return 1
 
     print(f"\n=== pipeline complete ({args.source}) ===")
     for name, result in summary["stages"].items():

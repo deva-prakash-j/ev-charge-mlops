@@ -4,7 +4,7 @@ Drift-aware MLOps pipeline for electric-vehicle charge-session energy prediction
 
 ![status](https://img.shields.io/badge/version-V1%20baseline-blue)
 ![python](https://img.shields.io/badge/python-3.11-blue)
-![tests](https://img.shields.io/badge/tests-60%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-66%20passing-brightgreen)
 ![licence](https://img.shields.io/badge/code-MIT-green)
 
 **Programme:** upGrad MLOps, August 2025 batch · **Author:** Deva Prakash J
@@ -66,6 +66,13 @@ redistribution. The records also contain a pseudonymous `userID` which, combined
 station IDs and timestamps, would expose per-individual commuting patterns at named
 workplaces.
 
+**Submission decision:** no real ACN-Data records or derived snapshots will be included
+in the repository, ZIP, or uploaded to upGrad. This is a deliberate deviation from the
+proposal's derived-snapshot submission plan. Evaluators can run the complete pipeline
+using the committed synthetic fixture; reproducing licensed-data results requires each
+evaluator to obtain ACN-Data directly and comply with the publisher's current terms.
+See [`DATA_LICENCE.md`](DATA_LICENCE.md).
+
 So this repository ships instead:
 
 - the **retrieval script**, so acquisition is reproducible;
@@ -93,6 +100,16 @@ the technical report use the licensed extract.
 Trained on the licensed extract. Temporal split: train ≤ 2019-12-31, validation
 2020-01-01..2020-02-29, and the **same fitted model** scored on 2020-04-01..2020-06-30 to
 separate drift impact from model quality.
+
+The licensed records are not redistributed, so this table cannot be retrained from a
+public checkout alone. Its data-free provenance record, including the training-frame
+fingerprint, row counts and exact scores, is tracked in
+[`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json). To reproduce it,
+obtain the licensed extract, run `python -m evcharge.pipeline --source raw`, and compare
+the resulting `data_sha256` and split counts before comparing metrics. A different
+fingerprint means the result is not an exact reproduction. The credential-free sample
+path is independently runnable, but its metrics are a pipeline demonstration, not a
+replacement for the licensed-data result.
 
 | Model | Train MAE | Validation MAE | Post-shift MAE | Validation R² | Post-shift R² |
 |---|---:|---:|---:|---:|---:|
@@ -195,6 +212,21 @@ from evcharge.features.build import FeatureSpec
 model = joblib.load("models/sample/model.joblib")
 spec = FeatureSpec.load("models/sample/feature_spec.json")
 ```
+
+### Local prediction API
+
+The saved sample model is served by FastAPI using the same feature builder as training:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn evcharge.serve.app:app --host 127.0.0.1 --port 8000
+```
+
+`GET /health` reports readiness. `POST /predict` accepts site and station identifiers,
+`connectionTimeLocal`, optional UTC `connectionTime` / `requestedDeparture`, and the
+declared request fields (`kWhRequested`, `milesRequested`, `minutesAvailable`,
+`WhPerMile`). Unknown category values are handled by the fitted feature spec; post-hoc
+fields are rejected. The demo service binds to localhost and does not implement
+authentication, TLS termination, or production deployment hardening.
 
 ### Full path — requires an ACN-Data token
 
@@ -302,15 +334,17 @@ natively, so missingness is treated as signal rather than silently filled with a
 | Baseline models and temporal evaluation | Done |
 | MLflow experiment tracking | Done |
 | Single-command pipeline entry point | Done |
+| Local FastAPI prediction and health endpoints | Done |
 | EDA notebook | Done |
 | Model artefacts and model card | Done |
+| Connected-duration (dwell-time) prediction | In scope; Phase 1 work |
 | Architecture diagrams and `STACK.md` | Done |
-| Test suite | Done — 60 tests |
+| Test suite | Done — 66 tests |
 
 ## Planned enhancements — V2 (Final)
 
-- **Serving** — FastAPI `/predict`, `/health`, `/metrics` in Docker, with the feature
-  module shared between training and serving to guarantee parity.
+- **Production serving** — Docker deployment, `/metrics`, request logging, and
+  operational hardening for the local FastAPI `/predict` and `/health` endpoints.
 - **CI/CD** — GitHub Actions running lint, tests, the data contract and an offline
   evaluation gate that blocks promotion on MAE regression.
 - **Model registry** — MLflow Registry with explicit `None → Staging → Production`

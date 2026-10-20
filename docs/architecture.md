@@ -16,6 +16,7 @@ flowchart LR
   G --> H[Mean · Ridge · HistGradientBoosting]
   H --> I[(MLflow<br/>params, metrics, git SHA, data hash)]
   H --> J[artifacts/training_*.json]
+  H --> K[FastAPI<br/>/health · /predict]
 ```
 
 Entry point: `python -m evcharge.pipeline --source sample|raw`.
@@ -64,9 +65,10 @@ flowchart TB
 | V2 requirement | V1 foundation |
 |---|---|
 | Train/serve parity | `features.build` is already the single definition, with a parity test |
+| Local prediction API | FastAPI loads the saved estimator and fitted feature spec |
 | Promotion gate | Temporal evaluation and baseline floors already produce the comparison metric |
 | Drift reference window | `reference_window_start` is already declared in `configs/data.yaml` |
-| Reproducible retraining | Partition writes are atomic; every run logs its input data hash |
+| Reproducible retraining | Partition replacement is rollback-safe; every run logs its input data hash |
 | Detector ground truth | The March–April 2020 collapse is present, dated and measured |
 
 ### Drift detection design

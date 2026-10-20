@@ -1,7 +1,7 @@
 # STACK
 
 Every tool here is justified against a named alternative. Entries marked **(V2)** are
-planned rather than implemented.
+planned rather than implemented; the local FastAPI serving path is implemented in V1.
 
 ## Constraints
 
@@ -85,8 +85,10 @@ Monthly partitions mirror the cadence at which ACN-Data publishes, which makes b
 drift evaluation a directory read rather than a filter. Partitioning uses **site-local**
 time so "March 2020" means the operator's March, not GMT's.
 
-Writes go to a `.staging` tree and are swapped atomically. This was added after a mid-write
-failure left 44,327 of 66,745 rows on disk and the next run silently read the partial tree.
+Writes go to a `.staging` tree. The prior tree is moved to a uniquely named backup before
+installation; a failed install restores it, and a later run recovers the newest backup if
+the process stopped during the swap. This was added after a mid-write failure left 44,327
+of 66,745 rows on disk and the next run silently read the partial tree.
 
 ---
 
@@ -143,12 +145,22 @@ path actively misleading.
 
 ---
 
+## Local model serving
+
+### FastAPI + Uvicorn
+
+The V1 local API loads the model and its fitted `FeatureSpec` together, then calls the
+shared feature builder used by training. `/health` checks model readiness and `/predict`
+rejects extra fields, including post-hoc values. Docker, metrics export, authentication
+and production deployment remain V2 work.
+
+---
+
 ## Planned (V2)
 
 | Tool | Purpose | Alternative considered |
 |---|---|---|
-| FastAPI + Uvicorn | Model serving | Flask — no async, weaker schema validation |
-| Docker + Compose | Environment parity | Conda — does not capture OS-level dependencies |
+| Docker + FastAPI + Uvicorn (V2) | Production environment and serving | Conda / Flask |
 | GitHub Actions | CI and quality gates | Jenkins — needs a server to maintain |
 | Prefect | Orchestration | Airflow — heavier scheduler for a four-week project |
 | Evidently | Drift reports and metrics | Hand-rolled PSI — no Data Docs, more to verify |

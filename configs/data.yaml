@@ -58,5 +58,4 @@ validation:
 split:
   # Temporal, never random: a random split leaks across the 2020 regime change.
   strategy: temporal
-  train_end: "2020-02-29"
   reference_window_start: "2019-07-01"
