@@ -195,7 +195,7 @@ git clone https://github.com/deva-prakash-j/ev-charge-mlops.git
 cd ev-charge-mlops
 py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pip install -e .
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,orchestration,monitoring]"
 ```
 
 **Linux / macOS**
@@ -205,10 +205,15 @@ git clone https://github.com/deva-prakash-j/ev-charge-mlops.git
 cd ev-charge-mlops
 python3.11 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pip install -e .
+.venv/bin/python -m pip install -e ".[dev,orchestration,monitoring]"
 ```
 
 Substitute `.venv/bin/python` for `.\.venv\Scripts\python.exe` in every command below.
+
+This matches the CI install. The extras add Ruff (`dev`), Prefect (`orchestration`) and
+Evidently (`monitoring`); the full test suite needs all three. A bare `pip install -e .`
+is enough for the demo pipeline and the API, but the drift and orchestration tests will
+then fail to import.
 
 ## Execution
 
@@ -246,7 +251,8 @@ Experiment runs are written to `mlruns/`; browse them with `mlflow ui`.
 
 ### Prefect workflow automation
 
-Install the optional orchestration and monitoring dependencies:
+The setup above already installs the orchestration and monitoring extras. After a bare
+`pip install -e .`, add them with:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[orchestration,monitoring]"
