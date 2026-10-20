@@ -152,6 +152,7 @@ The same 66,743 post-quarantine sessions and temporal boundaries are used to pre
 This is a separate target, not a feature: the dwell model uses only the same plug-in-time
 fields as the energy model. The synthetic demo trains the same target but its scores are
 not evidence of licensed-data model quality. Full-data evaluation is recorded in
+[`benchmarks/dwell_baseline.json`](benchmarks/dwell_baseline.json); the full run report is
 `artifacts/training_dwell_raw.json` in the upGrad copy.
 
 ## Installation
@@ -279,7 +280,8 @@ Check the files against the manifest, then run the pipeline without `--fetch`:
 `artifacts/training_raw.json` then reports `data_sha256` and `rows`; they should equal
 `training_frame_sha256` and `split_rows` in
 [`benchmarks/licensed_baseline.json`](benchmarks/licensed_baseline.json), and the
-headline metrics follow from them.
+headline metrics follow from them. Compare `artifacts/training_dwell_raw.json` against
+[`benchmarks/dwell_baseline.json`](benchmarks/dwell_baseline.json) for the dwell target.
 The reference command creates the frozen 2019-07..2020-02 drift snapshot and verifies its
 metadata in `data/reference/manifest.json`. The snapshot file itself is included only in
 the upGrad evaluation copy.

@@ -1,0 +1,65 @@
+{
+  "source": "ACN-Data",
+  "target": "connectedHours",
+  "target_unit": "hours",
+  "citation": "Zachary J. Lee, Tongxin Li and Steven H. Low. ACN-Data: Analysis and Applications of an Open EV Charging Dataset. e-Energy '19, 2019.",
+  "run_timestamp_utc": "2026-10-20T07:33:01+00:00",
+  "run_git_commit": "bdafde51bc67addb492494a10b90b590690508c1",
+  "training_frame_sha256": "33e52b6e57fd6c2e21d17ea997c32b161cfe965b04b9d7f43f2a0bd1c75fb431",
+  "training_frame_sha256_description": "SHA-256 of the normalized, post-quarantine DataFrame used for training; the licensed source records are not included.",
+  "split_rows": {
+    "train": 48957,
+    "validation": 4815,
+    "post_shift": 942
+  },
+  "best_model": "hist_gradient_boosting",
+  "metrics": {
+    "baseline_mean": {
+      "train": {
+        "mae": 3.3566930985237518,
+        "r2": 0.0
+      },
+      "validation": {
+        "mae": 3.0738597362617996,
+        "r2": -5.202658066139065e-06
+      },
+      "post_shift": {
+        "mae": 2.8348444624337614,
+        "r2": -0.022229830826911323
+      }
+    },
+    "baseline_ridge": {
+      "train": {
+        "mae": 2.2891500224392214,
+        "r2": 0.20029853975220668
+      },
+      "validation": {
+        "mae": 1.9821144756020606,
+        "r2": 0.3280241279396683
+      },
+      "post_shift": {
+        "mae": 2.393262240142127,
+        "r2": 0.08096280878328677
+      }
+    },
+    "hist_gradient_boosting": {
+      "train": {
+        "mae": 1.7897782457606215,
+        "r2": 0.27245573249976673
+      },
+      "validation": {
+        "mae": 1.6585796749115145,
+        "r2": 0.44632630842055887
+      },
+      "post_shift": {
+        "mae": 2.3239223406927936,
+        "r2": 0.09585380535938459
+      }
+    }
+  },
+  "reproduction": {
+    "requires_licensed_extract": true,
+    "command": "python -m evcharge.models.train --source raw --target dwell",
+    "comparison": "Compare data_sha256 and split row counts in artifacts/training_dwell_raw.json before comparing metrics."
+  }
+}
